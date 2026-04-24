@@ -6,7 +6,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SocketProvider } from "@/contexts/SocketContext";
 import { GameProvider } from "@/contexts/GameContext";
 import Index from "./pages/Index.tsx";
-import Auth from "./pages/Auth.tsx";
 import Lobby from "./pages/Lobby.tsx";
 import Room from "./pages/Room.tsx";
 import TeenPattiGame from "./pages/TeenPattiGame.tsx";
@@ -26,7 +25,6 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
               <Route path="/lobby/:gameId" element={<Lobby />} />
               <Route path="/room/:code" element={<Room />} />
               <Route path="/play/teen-patti/:code" element={<TeenPattiGame />} />

@@ -17,13 +17,9 @@ const SUPPORTED = new Set(["teen-patti", "typing"]);
 export default function Lobby() {
   const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user } = useAuth();
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
-
-  if (!loading && !user) {
-    return <Navigate to="/auth" replace state={{ from: `/lobby/${gameId}` }} />;
-  }
 
   const game = GAMES.find((g) => g.id === gameId);
   if (!game) return <Navigate to="/" replace />;
