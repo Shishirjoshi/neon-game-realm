@@ -6,6 +6,7 @@ import { useGameState } from '@/contexts/GameContext';
 import { useAuth } from '@/hooks/useAuth';
 import { TypingRaceGame } from '@/components/TypingRaceGame';
 import { GlassPanel } from '@/components/GlassPanel';
+import { getBotTypingSpeed, simulateBotTypingProgress } from '@/lib/botService';
 import type { TypingGameState } from '@/contexts/GameContext';
 
 export default function TypingRaceGamePage() {
@@ -13,12 +14,58 @@ export default function TypingRaceGamePage() {
   const navigate = useNavigate();
   const { socket, connected } = useSocket();
   const { user } = useAuth();
-  const { gameState, setGameState } = useGameState();
+  const { gameState, setGameState, currentRoom } = useGameState();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize game connection
+  // Initialize game with bots if offline
   useEffect(() => {
+    if (currentRoom?.botPlayers && currentRoom.botPlayers.length > 0 && !gameState) {
+      // Single player with bots - create game state locally
+      const allPlayers = [
+        {
+          id: user?.id || 'player-1',
+          username: user?.user_metadata?.username || 'You',
+          avatar_url: null,
+          seat: 0,
+          isReady: true,
+          status: 'playing' as const,
+        },
+        ...currentRoom.botPlayers.map((bot, i) => ({
+          ...bot,
+          seat: i + 1,
+        }))
+      ];
+
+      // Create bot leaderboard entries with simulated speeds
+      const leaderboard = allPlayers.map(p => {
+        const botSpeed = p.seat > 0 ? getBotTypingSpeed('medium') : { wpm: 0, accuracy: 100 };
+        return {
+          userId: p.id,
+          username: p.username,
+          wpm: p.seat > 0 ? Math.floor(botSpeed.wpm) : 0,
+          progress: 0,
+          accuracy: p.seat > 0 ? Math.floor(botSpeed.accuracy) : 100
+        };
+      });
+
+      const initialState: TypingGameState = {
+        type: 'typing',
+        players: allPlayers,
+        textToType: 'The quick brown fox jumps over the lazy dog. Master your typing speed and accuracy to claim victory.',
+        leaderboard,
+        yourProgress: 0,
+        yourWPM: 0,
+        yourAccuracy: 100,
+        gamePhase: 'waiting',
+        timeRemaining: 60
+      };
+
+      setGameState(initialState);
+      setLoading(false);
+      return;
+    }
+
     if (!socket || !user || !code) return;
 
     setLoading(true);
@@ -65,7 +112,7 @@ export default function TypingRaceGamePage() {
       socket.off('leaderboardUpdate', handleLeaderboardUpdate);
       socket.off('error', handleError);
     };
-  }, [socket, user, code, setGameState, navigate]);
+  }, [socket, user, code, setGameState, currentRoom, gameState, navigate]);
 
   const handleTyping = (text: string, wpm: number, accuracy: number) => {
     if (!socket || !user) return;

@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Navigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Copy, LogOut, Play, Users, Check } from "lucide-react";
+import { ArrowLeft, Copy, LogOut, Play, Users, Check, Bot } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { GlassPanel } from "@/components/GlassPanel";
 import { NeonButton } from "@/components/NeonButton";
 import { PlayerAvatar } from "@/components/PlayerAvatar";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/hooks/useAuth";
+import { useGameState } from "@/contexts/GameContext";
 import { supabase } from "@/integrations/supabase/client";
 import { GAMES } from "@/data/games";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { createBotPlayers } from "@/lib/botService";
 
 interface Room {
   id: string;
@@ -39,8 +41,10 @@ export default function Room() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
+  const { setCurrentRoom } = useGameState();
   const [room, setRoom] = useState<Room | null>(null);
   const [players, setPlayers] = useState<PlayerWithProfile[]>([]);
+  const [botPlayers, setBotPlayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -51,8 +55,10 @@ export default function Room() {
   );
   const me = useMemo(() => players.find((p) => p.user_id === user?.id), [players, user]);
   const isHost = user && room?.host_id === user.id;
-  const readyCount = players.filter((p) => p.is_ready || p.user_id === room?.host_id).length;
-  const canStart = !!isHost && players.length >= (room?.min_players ?? 2) && players.every((p) => p.is_ready || p.user_id === room?.host_id);
+  const totalPlayers = players.length + botPlayers.length;
+  const readyCount = players.filter((p) => p.is_ready || p.user_id === room?.host_id).length + botPlayers.length;
+  // Allow single player with bots, or 2+ human players
+  const canStart = !!isHost && (totalPlayers >= 2 || (totalPlayers === 1 && botPlayers.length > 0)) && players.every((p) => p.is_ready || p.user_id === room?.host_id);
 
   // Load + subscribe
   useEffect(() => {
@@ -156,9 +162,37 @@ export default function Room() {
     navigate("/");
   }
 
+  function addBot() {
+    if (!room || totalPlayers >= room.max_players) {
+      toast({
+        title: "Room full",
+        description: "Maximum players reached",
+        variant: "destructive"
+      });
+      return;
+    }
+    const newBots = createBotPlayers(1, totalPlayers);
+    setBotPlayers([...botPlayers, ...newBots]);
+    toast({ title: "Bot added", description: `${newBots[0].username} joined the game` });
+  }
+
+  function removeBot(botId: string) {
+    setBotPlayers(botPlayers.filter(b => b.id !== botId));
+  }
+
   async function start() {
     if (!room || !canStart) return;
     setBusy(true);
+
+    // Store bot players in game state for use in game
+    setCurrentRoom({
+      code: room.code,
+      gameType: room.game_type,
+      hostId: room.host_id,
+      maxPlayers: room.max_players,
+      botPlayers: botPlayers,
+    });
+
     const { error } = await supabase
       .from("rooms")
       .update({ status: "in_progress", started_at: new Date().toISOString() })
@@ -179,9 +213,10 @@ export default function Room() {
   if (!user) return <Navigate to="/auth" replace />;
   if (!room || !game) return null;
 
-  // Build seats array
-  const seats: (PlayerWithProfile | null)[] = Array.from({ length: room.max_players }, (_, i) => {
-    return players.find((p) => p.seat === i) ?? null;
+  // Build seats array - combine real players and bots
+  const allPlayers = [...players, ...botPlayers];
+  const seats: (any | null)[] = Array.from({ length: room.max_players }, (_, i) => {
+    return allPlayers.find((p) => p.seat === i) ?? null;
   });
 
   return (
@@ -229,19 +264,30 @@ export default function Room() {
             <div className="mt-8 w-full grid grid-cols-2 gap-3">
               <div className="glass rounded-2xl p-3">
                 <div className="font-display text-2xl font-bold">
-                  {players.length}<span className="text-muted-foreground/50">/{room.max_players}</span>
+                  {totalPlayers}<span className="text-muted-foreground/50">/{room.max_players}</span>
                 </div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mt-0.5">Players</div>
               </div>
               <div className="glass rounded-2xl p-3">
                 <div className="font-display text-2xl font-bold">
-                  {readyCount}<span className="text-muted-foreground/50">/{players.length}</span>
+                  {readyCount}<span className="text-muted-foreground/50">/{totalPlayers}</span>
                 </div>
                 <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground mt-0.5">Ready</div>
               </div>
             </div>
 
             <div className="mt-6 w-full flex flex-col gap-2">
+              {isHost && totalPlayers < room.max_players && (
+                <NeonButton
+                  variant="secondary"
+                  size="lg"
+                  className="w-full"
+                  onClick={addBot}
+                  disabled={busy}
+                >
+                  <Bot className="h-4 w-4" /> Add Bot
+                </NeonButton>
+              )}
               {!isHost && me && (
                 <NeonButton
                   variant={me.is_ready ? "secondary" : "accent"}
@@ -261,7 +307,7 @@ export default function Room() {
                   disabled={!canStart || busy}
                 >
                   <Play className="h-4 w-4" fill="currentColor" />
-                  {canStart ? "Start game" : `Waiting (${players.length}/${room.min_players})`}
+                  {canStart ? "Start game" : `Need more players (${totalPlayers}/2)`}
                 </NeonButton>
               )}
               <NeonButton variant="ghost" size="md" className="w-full text-muted-foreground" onClick={leave} disabled={busy}>
@@ -301,23 +347,35 @@ export default function Room() {
                     {p ? (
                       <>
                         <PlayerAvatar
-                          name={p.profile?.username ?? "Player"}
-                          src={p.profile?.avatar_url ?? undefined}
+                          name={p.isBot ? p.username : (p.profile?.username ?? "Player")}
+                          src={p.isBot ? undefined : (p.profile?.avatar_url ?? undefined)}
                           size="lg"
-                          isHost={p.user_id === room.host_id}
+                          isHost={!p.isBot && p.user_id === room.host_id}
                         />
                         <div className="min-w-0 flex-1">
                           <div className="font-display font-bold truncate">
-                            {p.profile?.username ?? "Player"}
-                            {p.user_id === user.id && (
+                            {p.isBot ? p.username : p.profile?.username ?? "Player"}
+                            {p.isBot && (
+                              <span className="ml-1.5 text-[10px] font-mono uppercase tracking-wider text-accent">bot</span>
+                            )}
+                            {!p.isBot && p.user_id === user.id && (
                               <span className="ml-1.5 text-[10px] font-mono uppercase tracking-wider text-accent">you</span>
                             )}
                           </div>
                           <div className="text-[11px] font-mono text-muted-foreground">Seat {p.seat + 1}</div>
                         </div>
                         <StatusBadge
-                          status={p.user_id === room.host_id ? "host" : p.is_ready ? "ready" : "waiting"}
+                          status={!p.isBot && p.user_id === room.host_id ? "host" : p.is_ready !== false ? "ready" : "waiting"}
                         />
+                        {isHost && p.isBot && (
+                          <button
+                            onClick={() => removeBot(p.id)}
+                            className="ml-2 text-muted-foreground hover:text-destructive transition-colors"
+                            title="Remove bot"
+                          >
+                            ✕
+                          </button>
+                        )}
                       </>
                     ) : (
                       <>

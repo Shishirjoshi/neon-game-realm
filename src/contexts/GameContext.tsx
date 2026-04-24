@@ -58,6 +58,7 @@ interface GameContextType {
     gameType: string;
     hostId: string;
     maxPlayers: number;
+    botPlayers?: any[];
   } | null;
   setCurrentRoom: (room: any) => void;
 }

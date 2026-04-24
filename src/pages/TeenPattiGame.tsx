@@ -6,6 +6,7 @@ import { useGameState } from '@/contexts/GameContext';
 import { useAuth } from '@/hooks/useAuth';
 import { TeenPattiTable } from '@/components/TeenPattiTable';
 import { GlassPanel } from '@/components/GlassPanel';
+import { createBotPlayers } from '@/lib/botService';
 import type { TeenPattiGameState, GamePlayer } from '@/contexts/GameContext';
 
 export default function TeenPattiGame() {
@@ -13,12 +14,48 @@ export default function TeenPattiGame() {
   const navigate = useNavigate();
   const { socket, connected } = useSocket();
   const { user } = useAuth();
-  const { gameState, setGameState } = useGameState();
+  const { gameState, setGameState, currentRoom } = useGameState();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize game connection
+  // Initialize game with bots if offline
   useEffect(() => {
+    if (currentRoom?.botPlayers && currentRoom.botPlayers.length > 0 && !gameState) {
+      // Single player with bots - create game state locally
+      const allPlayers = [
+        {
+          id: user?.id || 'player-1',
+          username: user?.user_metadata?.username || 'You',
+          avatar_url: null,
+          seat: 0,
+          isReady: true,
+          coinBalance: 1000,
+          status: 'playing' as const,
+        },
+        ...currentRoom.botPlayers.map((bot, i) => ({
+          ...bot,
+          seat: i + 1,
+        }))
+      ];
+
+      const initialState: TeenPattiGameState = {
+        type: 'teen-patti',
+        players: allPlayers,
+        currentPlayerTurn: allPlayers[0].id,
+        communityCards: [],
+        pot: 0,
+        minimumBet: 50,
+        yourCards: ['K♠', 'Q♦', 'J♣'],
+        yourSeat: 0,
+        gamePhase: 'dealing',
+        roundHistory: []
+      };
+
+      setGameState(initialState);
+      setLoading(false);
+      return;
+    }
+
     if (!socket || !user || !code) return;
 
     setLoading(true);
@@ -43,7 +80,6 @@ export default function TeenPattiGame() {
       action: 'fold' | 'call' | 'raise' | 'show'; 
       amount?: number;
     }) => {
-      // Update UI with player action
       console.log('Player action:', data);
     };
 
@@ -68,7 +104,7 @@ export default function TeenPattiGame() {
       socket.off('gameUpdate', handleGameUpdate);
       socket.off('error', handleError);
     };
-  }, [socket, user, code, setGameState, navigate]);
+  }, [socket, user, code, setGameState, currentRoom, gameState]);
 
   const handleGameAction = (action: 'fold' | 'call' | 'raise' | 'show', amount?: number) => {
     if (!socket || !user) return;
