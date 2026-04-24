@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
-import { Search, Trophy, User, Gamepad2, Home, Coins, Menu, X } from "lucide-react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Search, Trophy, User, Gamepad2, Home, Coins, Menu, X, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NeonButton } from "./NeonButton";
 import { PlayerAvatar } from "./PlayerAvatar";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home, end: true },
@@ -16,6 +18,8 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, profile } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -95,18 +99,33 @@ export function Navbar() {
             </button>
 
             {/* Coins */}
-            <div className="hidden sm:flex items-center gap-2 rounded-xl glass px-3 py-2">
-              <Coins className="h-4 w-4 text-accent" />
-              <span className="font-mono text-sm font-semibold tabular-nums">
-                12,480
-              </span>
-            </div>
+            {user && (
+              <div className="hidden sm:flex items-center gap-2 rounded-xl glass px-3 py-2">
+                <Coins className="h-4 w-4 text-accent" />
+                <span className="font-mono text-sm font-semibold tabular-nums">
+                  {(profile?.coins ?? 0).toLocaleString()}
+                </span>
+              </div>
+            )}
 
             {/* Avatar / login */}
-            <NeonButton variant="secondary" size="sm" className="hidden sm:inline-flex">
-              Sign in
-            </NeonButton>
-            <PlayerAvatar name="You" size="sm" />
+            {user ? (
+              <>
+                <PlayerAvatar name={profile?.username ?? "You"} src={profile?.avatar_url ?? undefined} size="sm" />
+                <button
+                  onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}
+                  className="hidden sm:inline-flex rounded-lg p-2 text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                  aria-label="Sign out"
+                  title="Sign out"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </>
+            ) : (
+              <NeonButton variant="secondary" size="sm" asChild>
+                <Link to="/auth">Sign in</Link>
+              </NeonButton>
+            )}
 
             {/* Mobile toggle */}
             <button

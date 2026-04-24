@@ -14,16 +14,161 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          coins: number
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          coins?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          coins?: number
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      room_players: {
+        Row: {
+          coins: number
+          id: string
+          is_ready: boolean
+          joined_at: string
+          room_id: string
+          seat: number
+          status: Database["public"]["Enums"]["player_status"]
+          user_id: string
+        }
+        Insert: {
+          coins?: number
+          id?: string
+          is_ready?: boolean
+          joined_at?: string
+          room_id: string
+          seat: number
+          status?: Database["public"]["Enums"]["player_status"]
+          user_id: string
+        }
+        Update: {
+          coins?: number
+          id?: string
+          is_ready?: boolean
+          joined_at?: string
+          room_id?: string
+          seat?: number
+          status?: Database["public"]["Enums"]["player_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "room_players_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rooms: {
+        Row: {
+          code: string
+          created_at: string
+          game_type: Database["public"]["Enums"]["game_type"]
+          host_id: string
+          id: string
+          max_players: number
+          min_players: number
+          started_at: string | null
+          status: Database["public"]["Enums"]["room_status"]
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          game_type: Database["public"]["Enums"]["game_type"]
+          host_id: string
+          id?: string
+          max_players?: number
+          min_players?: number
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["room_status"]
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          game_type?: Database["public"]["Enums"]["game_type"]
+          host_id?: string
+          id?: string
+          max_players?: number
+          min_players?: number
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["room_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "player"
+      game_type:
+        | "teen-patti"
+        | "typing"
+        | "neon-strike"
+        | "velocity-rush"
+        | "block-blast"
+        | "glass-chess"
+      player_status: "waiting" | "ready" | "playing" | "folded" | "out"
+      room_status: "waiting" | "in_progress" | "finished"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +295,18 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "player"],
+      game_type: [
+        "teen-patti",
+        "typing",
+        "neon-strike",
+        "velocity-rush",
+        "block-blast",
+        "glass-chess",
+      ],
+      player_status: ["waiting", "ready", "playing", "folded", "out"],
+      room_status: ["waiting", "in_progress", "finished"],
+    },
   },
 } as const
