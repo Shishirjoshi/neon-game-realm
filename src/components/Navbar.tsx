@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
-import { Search, Trophy, User, Gamepad2, Home, Coins, Menu, X } from "lucide-react";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { Search, Trophy, User, Gamepad2, Home, Coins, Menu, X, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NeonButton } from "./NeonButton";
 import { PlayerAvatar } from "./PlayerAvatar";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 const NAV = [
   { to: "/", label: "Home", icon: Home, end: true },
