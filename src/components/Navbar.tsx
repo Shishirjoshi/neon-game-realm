@@ -20,6 +20,8 @@ export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+
+  useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
