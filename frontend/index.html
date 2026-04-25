@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teen Patti - Multiplayer Card Game</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        color: #333;
+      }
+
+      #root {
+        width: 100%;
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .header {
+        text-align: center;
+        color: white;
+        margin-bottom: 30px;
+        padding: 20px 0;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .lobby-screen {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      }
+
+      .input-group {
+        margin-bottom: 20px;
+      }
+
+      .input-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+        color: #333;
+      }
+
+      .input-group input {
+        width: 100%;
+        padding: 12px;
+        border: 2px solid #ddd;
+        border-radius: 6px;
+        font-size: 1em;
+        transition: border-color 0.3s;
+      }
+
+      .input-group input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      button {
+        flex: 1;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 6px;
+        font-size: 1em;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .btn-primary {
+        background: #667eea;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #5568d3;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-secondary {
+        background: #764ba2;
+        color: white;
+      }
+
+      .btn-secondary:hover {
+        background: #6a4592;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(118, 75, 162, 0.4);
+      }
+
+      .btn-danger {
+        background: #ff6b6b;
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: #ee5a52;
+        transform: translateY(-2px);
+      }
+
+      .btn-success {
+        background: #51cf66;
+        color: white;
+      }
+
+      .btn-success:hover {
+        background: #40c057;
+        transform: translateY(-2px);
+      }
+
+      .room-screen,
+      .game-screen {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      }
+
+      .info-box {
+        background: #f0f2f5;
+        border-left: 4px solid #667eea;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+      }
+
+      .info-box h3 {
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .info-text {
+        display: flex;
+        justify-content: space-between;
+        margin: 8px 0;
+        color: #555;
+      }
+
+      .info-text strong {
+        color: #667eea;
+      }
+
+      .players-list {
+        margin: 20px 0;
+      }
+
+      .players-list h3 {
+        margin-bottom: 15px;
+        color: #333;
+      }
+
+      .player-item {
+        background: #f9f9f9;
+        padding: 12px;
+        margin-bottom: 10px;
+        border-radius: 6px;
+        border-left: 3px solid #667eea;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .player-name {
+        font-weight: bold;
+        color: #333;
+      }
+
+      .player-coins {
+        color: #51cf66;
+        font-weight: bold;
+      }
+
+      .player-status {
+        font-size: 0.9em;
+        color: #999;
+      }
+
+      .game-status {
+        text-align: center;
+        margin: 20px 0;
+        padding: 15px;
+        background: #e7f5ff;
+        border-radius: 6px;
+        color: #0c5aa0;
+        font-weight: bold;
+      }
+
+      .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      .pot-info {
+        text-align: center;
+        margin: 20px 0;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px;
+        color: white;
+      }
+
+      .pot-info h2 {
+        font-size: 2em;
+        margin-bottom: 5px;
+      }
+
+      .pot-info p {
+        font-size: 0.9em;
+        opacity: 0.9;
+      }
+
+      .error {
+        color: #ff6b6b;
+        margin: 10px 0;
+        padding: 10px;
+        background: #ffe0e0;
+        border-radius: 4px;
+      }
+
+      .success {
+        color: #51cf66;
+        margin: 10px 0;
+        padding: 10px;
+        background: #e6ffed;
+        border-radius: 4px;
+      }
+
+      .title {
+        font-size: 1.5em;
+        margin-bottom: 20px;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

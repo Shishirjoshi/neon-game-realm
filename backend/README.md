@@ -1,29 +1,219 @@
-# Teen Patti Multiplayer Game Backend
+# Teen Patti Backend - Full Stack MVP
 
-A production-ready Node.js + Socket.IO backend server for Teen Patti (Indian Poker) with a **Nepalese Rupees (₨) currency system**.
+Express + Socket.IO backend for Teen Patti multiplayer card game.
 
-## ⚡ Quick Start
-
-### 1. Install Dependencies
+## 📦 Installation
 
 ```bash
-cd backend
 npm install
 ```
 
-### 2. Run Server
+## 🚀 Running the Server
 
-**Development (with auto-reload):**
 ```bash
+# Production
+npm start
+
+# Development (watch mode)
 npm run dev
 ```
 
-**Production:**
-```bash
-npm start
+Server will start on **http://localhost:5000**
+
+## 📁 Files
+
+- **server.js** - Main Express + Socket.IO server
+- **game.js** - Game logic and GameManager class
+- **package.json** - Dependencies
+
+## 🔌 Architecture
+
+### GameManager Class
+
+Manages all game rooms and player states.
+
+```javascript
+const gameManager = new GameManager();
+
+// Create room
+const room = gameManager.createRoom(hostId, hostName);
+// Returns: { roomId, hostId, players, pot, currentTurn, state }
+
+// Join room
+const room = gameManager.joinRoom(roomId, playerId, playerName);
+
+// Start game
+const room = gameManager.startGame(roomId);
+
+// Player action (bet or fold)
+const room = gameManager.playerAction(roomId, playerId, action);
 ```
 
-Server runs on `http://localhost:3001`
+### Room Object
+
+```javascript
+{
+  roomId: "ABC123",                    // Unique room identifier
+  hostId: "socket-id-1",              // Host player socket ID
+  players: [
+    {
+      id: "socket-id-1",              // Player socket ID
+      name: "Alice",                  // Player name
+      coins: 1000,                    // Current balance (₨)
+      hand: [                         // 3 cards
+        { rank: "A", suit: "♠" },
+        { rank: "K", suit: "♥" },
+        { rank: "Q", suit: "♦" }
+      ],
+      folded: false,                  // Game state
+      currentBet: 10                  // Bet in current round (₨)
+    }
+  ],
+  pot: 20,                            // Total pot (₨)
+  currentTurn: 0,                     // Index of current player
+  state: "playing"                    // waiting | playing | finished
+}
+```
+
+## 🃏 Game Logic (game.js)
+
+### Card Operations
+
+```javascript
+createDeck()              // Create 52-card deck
+shuffleDeck(deck)        // Fisher-Yates shuffle
+dealCards(players, deck) // Deal 3 cards to each player
+```
+
+### Hand Evaluation
+
+```javascript
+evaluateHand(hand)       // Returns { type, value, high }
+getWinner(players)       // Find best hand among active players
+
+// Hand types:
+// - trio (value: 5)
+// - sequence (value: 4)
+// - color (value: 3)
+// - pair (value: 2)
+// - highcard (value: 1)
+```
+
+## 🔌 Socket Events
+
+### Incoming Events
+
+```javascript
+socket.on('createRoom', (data) => {
+  const { playerName } = data;
+  // Returns: roomCreated event with room object
+});
+
+socket.on('joinRoom', (data) => {
+  const { roomId, playerName } = data;
+  // Returns: roomUpdate event broadcasted to all players
+});
+
+socket.on('startGame', (data) => {
+  const { roomId } = data;
+  // Returns: gameStarted event with room object and dealt cards
+});
+
+socket.on('playerAction', (data) => {
+  const { roomId, action } = data; // action: 'bet' or 'fold'
+  // Returns: gameUpdate event
+  // Or: gameEnd event if game finished
+});
+```
+
+### Outgoing Events
+
+```javascript
+// Sent to requesting client
+socket.emit('roomCreated', room);
+socket.emit('error', 'Error message');
+
+// Sent to all clients in room
+io.to(roomId).emit('roomUpdate', room);
+io.to(roomId).emit('gameStarted', room);
+io.to(roomId).emit('gameUpdate', room);
+io.to(roomId).emit('gameEnd', room);
+```
+
+## 💱 Currency System
+
+- **Currency:** Nepalese Rupees (NPR)
+- **Symbol:** ₨
+- **Starting Balance:** ₨1000 per player
+- **Fixed Bet:** ₨10 per turn
+- **Format:** Integer values (no decimals)
+
+## 📊 Game Flow
+
+```
+Player 1: createRoom
+  ↓ GameManager.createRoom()
+  → Room created, roomId = "ABC123"
+  ↓ socket.emit('roomCreated', room)
+
+Player 2: joinRoom("ABC123", "Bob")
+  ↓ GameManager.joinRoom()
+  → Bob added to players
+  ↓ io.to("ABC123").emit('roomUpdate', room)
+
+Player 1: startGame("ABC123")
+  ↓ GameManager.startGame()
+  → state = "playing"
+  → Cards dealt
+  → currentTurn = 0
+  ↓ io.to("ABC123").emit('gameStarted', room)
+
+Player 1 (turn 0): playerAction("ABC123", "bet")
+  ↓ GameManager.playerAction()
+  → coins -= 10, pot += 10
+  → currentTurn = 1
+  ↓ io.to("ABC123").emit('gameUpdate', room)
+
+Player 2 (turn 1): playerAction("ABC123", "fold")
+  ↓ GameManager.playerAction()
+  → folded = true
+  → state = "finished"
+  ↓ io.to("ABC123").emit('gameEnd', room)
+```
+
+## 🎯 Game Rules
+
+1. **Room Creation** - Host creates room with unique ID
+2. **Joining** - Up to 6 players can join, each gets ₨1000
+3. **Game Start** - Minimum 2 players required, 3 cards dealt
+4. **Betting** - ₨10 fixed bet, deduct from coins, add to pot
+5. **Folding** - Player marked as folded, skip in turns
+6. **Win** - If only 1 active player → Game ends, that player wins pot
+
+## ✅ Checklist
+
+- [x] Express server setup
+- [x] Socket.IO integration
+- [x] GameManager class
+- [x] Room creation/joining
+- [x] Card deck + shuffle
+- [x] Hand evaluation
+- [x] Winner calculation
+- [x] Turn rotation
+- [x] Betting system
+- [x] Fold logic
+- [x] Socket events
+
+## 🚀 Deployment
+
+See `../frontend/README.md` for full setup instructions.
+
+---
+
+**Version:** 1.0.0  
+**Status:** ✅ Complete  
+**Last Updated:** April 25, 2026
+
 
 ## 📋 System Architecture
 

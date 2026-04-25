@@ -1,112 +1,121 @@
 /**
- * Teen Patti Multiplayer Game Backend
- * Node.js + Socket.IO Server with NPR Currency System
- * 
- * Port: 3001 (or PORT environment variable)
- * Frontend: http://localhost:5173
+ * TEEN PATTI BACKEND - FULL STACK MVP
+ * Express + Socket.IO
+ * Port: 5000
  */
 
 import express from 'express';
 import { createServer } from 'http';
-import { Server as SocketIOServer } from 'socket.io';
+import { Server } from 'socket.io';
 import cors from 'cors';
-import { initializeSocketHandlers } from './socket.js';
+import { GameManager } from './game.js';
 
-// Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 3001;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const PORT = process.env.PORT || 5000;
+const server = createServer(app);
+const io = new Server(server, {
+  cors: { origin: '*', methods: ['GET', 'POST'] }
+});
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Create HTTP server
-const server = createServer(app);
+// Game Manager
+const gameManager = new GameManager();
 
-// Initialize Socket.IO
-const io = new SocketIOServer(server, {
-  cors: {
-    origin: FRONTEND_URL,
-    methods: ['GET', 'POST'],
-    credentials: true
-  },
-  transports: ['websocket', 'polling'],
-  reconnection: true,
-  reconnectionDelay: 1000,
-  reconnectionDelayMax: 5000,
-  reconnectionAttempts: Infinity
+// ========================================
+// REST ENDPOINTS
+// ========================================
+
+app.get('/', (req, res) => {
+  res.json({ status: 'Teen Patti Server Running', port: PORT });
 });
 
-// ==================== REST ENDPOINTS ====================
+// ========================================
+// SOCKET EVENTS
+// ========================================
 
-/**
- * Health check endpoint
- */
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Teen Patti Server is running' });
-});
+io.on('connection', (socket) => {
+  console.log(`✓ Client connected: ${socket.id}`);
 
-/**
- * Server info endpoint
- */
-app.get('/info', (req, res) => {
-  res.json({
-    server: 'Teen Patti Multiplayer Backend',
-    version: '1.0.0',
-    port: PORT,
-    frontend: FRONTEND_URL,
-    gameType: 'teen-patti',
-    currency: 'NPR (₨)',
-    initialStake: '₨10'
+  // CREATE ROOM
+  socket.on('createRoom', (data) => {
+    const { playerName } = data;
+    const room = gameManager.createRoom(socket.id, playerName);
+    socket.join(room.roomId);
+    socket.emit('roomCreated', room);
+    console.log(`✓ Room created: ${room.roomId}`);
+  });
+
+  // JOIN ROOM
+  socket.on('joinRoom', (data) => {
+    const { roomId, playerName } = data;
+    const room = gameManager.joinRoom(roomId, socket.id, playerName);
+    
+    if (!room) {
+      socket.emit('error', 'Room not found or full');
+      return;
+    }
+
+    socket.join(roomId);
+    io.to(roomId).emit('roomUpdate', room);
+    console.log(`✓ Player joined: ${roomId}`);
+  });
+
+  // START GAME
+  socket.on('startGame', (data) => {
+    const { roomId } = data;
+    const room = gameManager.startGame(roomId);
+    
+    if (!room) {
+      socket.emit('error', 'Cannot start game');
+      return;
+    }
+
+    io.to(roomId).emit('gameStarted', room);
+    console.log(`✓ Game started: ${roomId}`);
+  });
+
+  // PLAYER ACTION
+  socket.on('playerAction', (data) => {
+    const { roomId, action } = data;
+    const room = gameManager.playerAction(roomId, socket.id, action);
+    
+    if (!room) {
+      socket.emit('error', 'Invalid action');
+      return;
+    }
+
+    io.to(roomId).emit('gameUpdate', room);
+    
+    // Check if game ended
+    if (room.state === 'finished') {
+      io.to(roomId).emit('gameEnd', room);
+    }
+  });
+
+  // DISCONNECT
+  socket.on('disconnect', () => {
+    console.log(`✗ Client disconnected: ${socket.id}`);
   });
 });
 
-// ==================== SOCKET.IO SETUP ====================
-
-// Initialize all socket handlers
-initializeSocketHandlers(io);
-
-// Log socket connections
-io.on('connection', (socket) => {
-  console.log(`\n✓ Client connected: ${socket.id}`);
-  console.log(`  Total connections: ${io.engine.clientsCount}`);
-});
-
-// ==================== SERVER START ====================
+// ========================================
+// START SERVER
+// ========================================
 
 server.listen(PORT, () => {
-  console.log('\n╔════════════════════════════════════════════════════╗');
-  console.log('║   Teen Patti Multiplayer Game Backend              ║');
-  console.log('║   Node.js + Socket.IO + NPR Currency              ║');
-  console.log('╚════════════════════════════════════════════════════╝');
-  console.log(`\n🎮 Server running on: http://localhost:${PORT}`);
-  console.log(`📱 Frontend: ${FRONTEND_URL}`);
-  console.log(`💱 Currency: NPR (₨)`);
-  console.log(`♠️  Game: Teen Patti Poker`);
-  console.log(`\n⚡ Socket.IO ready for connections`);
-  console.log(`\nEndpoints:`);
-  console.log(`  GET /health - Health check`);
-  console.log(`  GET /info   - Server info`);
-  console.log('\n');
+  console.log(`
+╔════════════════════════════════════════╗
+║  TEEN PATTI MULTIPLAYER MVP BACKEND    ║
+║  Socket.IO + NPR Currency              ║
+╠════════════════════════════════════════╣
+║  Server: http://localhost:${PORT}                 ║
+║  Games: Room-based Multiplayer          ║
+║  Currency: NPR (₨10 fixed bet)          ║
+╚════════════════════════════════════════╝
+  `);
 });
 
-// ==================== GRACEFUL SHUTDOWN ====================
-
-process.on('SIGINT', () => {
-  console.log('\n\n🛑 Shutting down server...');
-  server.close(() => {
-    console.log('✓ Server closed');
-    process.exit(0);
-  });
-});
-
-process.on('SIGTERM', () => {
-  console.log('\n\n🛑 Shutting down server...');
-  server.close(() => {
-    console.log('✓ Server closed');
-    process.exit(0);
-  });
-});
-
-export default server;
+export { io, gameManager };
