@@ -1,73 +1,43 @@
-import { useState, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { SocketProvider } from "@/contexts/SocketContext";
 import { GameProvider } from "@/contexts/GameContext";
+import Index from "./pages/Index.tsx";
+import Lobby from "./pages/Lobby.tsx";
+import Room from "./pages/Room.tsx";
+import TeenPattiGame from "./pages/TeenPattiGame.tsx";
+import TypingRaceGamePage from "./pages/TypingRaceGamePage.tsx";
+import GamePlaceholder from "./pages/GamePlaceholder.tsx";
+import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
 
-const TestPage = () => {
-  return (
-    <div style={{ padding: '40px', color: 'white', background: '#1a1a1a', minHeight: '100vh' }}>
-      <h1>✅ Gamehub Loaded Successfully!</h1>
-      <p>App is working - just need to load components gradually</p>
-      <ul style={{ marginTop: '20px', lineHeight: '1.8' }}>
-        <li>✓ QueryClient working</li>
-        <li>✓ Socket provider working</li>
-        <li>✓ Game provider working</li>
-        <li>✓ Router working</li>
-      </ul>
-    </div>
-  );
-};
-
-const AppContent = () => {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<TestPage />} />
-        <Route path="*" element={<TestPage />} />
-      </Routes>
-    </BrowserRouter>
-  );
-};
-
-const SimpleApp = () => {
-  const [isReady, setIsReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      console.log('[App] Starting initialization...');
-      setIsReady(true);
-    } catch (err) {
-      console.error('[App] Init error:', err);
-      setError(err instanceof Error ? err.message : String(err));
-    }
-  }, []);
-
-  if (error) {
-    return (
-      <div style={{ padding: '20px', color: 'red', fontFamily: 'monospace' }}>
-        <h1>Error</h1>
-        <p>{error}</p>
-      </div>
-    );
-  }
-
-  if (!isReady) {
-    return <div style={{ padding: '20px' }}>Loading...</div>;
-  }
-
+const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <SocketProvider>
         <GameProvider>
-          <AppContent />
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/lobby/:gameId" element={<Lobby />} />
+                <Route path="/room/:code" element={<Room />} />
+                <Route path="/play/teen-patti/:code" element={<TeenPattiGame />} />
+                <Route path="/play/typing/:code" element={<TypingRaceGamePage />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
         </GameProvider>
       </SocketProvider>
     </QueryClientProvider>
   );
 };
 
-export default SimpleApp;
+export default App;
