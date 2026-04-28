@@ -73,7 +73,7 @@ export function TeenPattiTable({ gameState, currentUserId, onAction }: TeenPatti
               >
                 {/* Avatar */}
                 <div className="relative">
-                  <PlayerAvatar user={{ username: player.username, avatar_url: player.avatar_url }} />
+                  <PlayerAvatar name={player.username} src={player.avatar_url} />
 
                   {/* Status indicator */}
                   <motion.div
