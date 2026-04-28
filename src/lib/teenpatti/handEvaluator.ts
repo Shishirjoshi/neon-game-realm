@@ -192,9 +192,9 @@ export function compareHands(hand1: Card[], hand2: Card[]): number {
  * Simplified version for quick evaluation
  */
 export function getHandStrength(hand: Card[]): HandStrength {
-  const eval = evaluateHand(hand);
-  if (eval.strength === 'high') return 'high';
-  if (eval.strength === 'medium') return 'medium';
+  const evaluation = evaluateHand(hand);
+  if (evaluation.strength === 'high') return 'high';
+  if (evaluation.strength === 'medium') return 'medium';
   return 'low';
 }
 
@@ -202,19 +202,19 @@ export function getHandStrength(hand: Card[]): HandStrength {
  * Get win probability estimate (0-1) for hand strength
  */
 export function getWinProbability(hand: Card[]): number {
-  const eval = evaluateHand(hand);
+  const evaluation = evaluateHand(hand);
 
-  switch (eval.type) {
+  switch (evaluation.type) {
     case 'trio':
       return 0.95; // Almost guaranteed
     case 'sequence':
-      return eval.rank === 7 ? 0.85 : 0.75; // Pure vs mixed
+      return evaluation.rank === 7 ? 0.85 : 0.75; // Pure vs mixed
     case 'color':
       return 0.70;
     case 'pair':
-      return eval.highCard >= 11 ? 0.55 : 0.45; // High pair vs low pair
+      return evaluation.highCard >= 11 ? 0.55 : 0.45; // High pair vs low pair
     case 'high-card':
-      return eval.highCard >= 12 ? 0.40 : 0.30; // Ace/King vs low
+      return evaluation.highCard >= 12 ? 0.40 : 0.30; // Ace/King vs low
     default:
       return 0.25;
   }

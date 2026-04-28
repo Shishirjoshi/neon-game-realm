@@ -213,7 +213,7 @@ export default function TeenPattiGame() {
       socket.off('gameUpdate', handleGameUpdate);
       socket.off('error', handleError);
     };
-  }, [socket, user, code, setGameState, currentRoom, gameState]);
+  }, [socket, user, code, setGameState, currentRoom, gameState, initializeOfflineGame, navigate])
 
   // Cleanup on unmount
   useEffect(() => {

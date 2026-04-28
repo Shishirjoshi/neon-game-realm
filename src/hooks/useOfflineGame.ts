@@ -63,7 +63,7 @@ export function useOfflineGame(options?: UseOfflineGameOptions): UseOfflineGameR
       }
 
       // Create new engine
-      const engine = new LocalGameEngine(gameType as any, players, {
+      const engine = new LocalGameEngine(gameType as 'teen-patti' | 'typing' | 'other', players, {
         onStateUpdate: (updates) => {
           options?.onStateUpdate?.(updates);
         },
@@ -108,7 +108,7 @@ export function useOfflineGame(options?: UseOfflineGameOptions): UseOfflineGameR
     (playerId: string, action: string, amount?: number) => {
       if (engineRef.current) {
         // Add to thinking bots if bot
-        const players = engineRef.current.getGameState().players;
+        const players = engineRef.current.getGameState().players as Array<GamePlayer & { isBot?: boolean }>;
         const player = players.find((p) => p.id === playerId);
         if (player && 'isBot' in player && player.isBot) {
           setThinkingBots((prev) => [...new Set([...prev, playerId])]);
