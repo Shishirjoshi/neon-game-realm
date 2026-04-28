@@ -25,6 +25,9 @@ export default function TeenPattiGame() {
 
   // Local game engine reference
   const gameEngineRef = useRef<LocalGameEngine | null>(null);
+  
+  // Track if we've already handled the offline code
+  const offlineInitializedRef = useRef(false);
 
   /**
    * Handle bot action for UI updates
@@ -161,8 +164,9 @@ export default function TeenPattiGame() {
 
   // Initialize game
   useEffect(() => {
-    // Check if this is an offline game request
-    if (code === 'offline') {
+    // Check if this is an offline game request - only show setup modal once
+    if (code === 'offline' && !offlineInitializedRef.current) {
+      offlineInitializedRef.current = true;
       setShowModeSetup(true);
       setLoading(false);
       return;
