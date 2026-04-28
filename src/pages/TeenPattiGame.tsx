@@ -161,6 +161,13 @@ export default function TeenPattiGame() {
 
   // Initialize game
   useEffect(() => {
+    // Check if this is an offline game request
+    if (code === 'offline') {
+      setShowModeSetup(true);
+      setLoading(false);
+      return;
+    }
+
     // Check if we already have bot players set up
     if (currentRoom?.botPlayers && currentRoom.botPlayers.length > 0 && !gameState) {
       initializeOfflineGame(currentRoom.botPlayers, currentRoom.difficulty || 'medium');
