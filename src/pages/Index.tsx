@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 const Index = () => {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<Category>("All");
+  const [featuredIndex] = useState(() => Math.floor(Math.random() * GAMES.length));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -25,7 +26,7 @@ const Index = () => {
     });
   }, [query, category]);
 
-  const featured = GAMES[0];
+  const featured = GAMES[featuredIndex];
   const totalLive = GAMES.reduce((sum, g) => sum + g.players, 0);
 
   return (
