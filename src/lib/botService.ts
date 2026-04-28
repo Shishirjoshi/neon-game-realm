@@ -1,10 +1,20 @@
 import type { GamePlayer } from '@/contexts/GameContext';
 
+export type BotDifficulty = 'easy' | 'medium' | 'hard';
+
 export interface BotPlayer extends GamePlayer {
   isBot: true;
+  difficulty?: BotDifficulty;
 }
 
-export function createBotPlayers(count: number, startSeat: number = 0): BotPlayer[] {
+/**
+ * Create bot players with specified difficulty
+ */
+export function createBotPlayers(
+  count: number,
+  startSeat: number = 0,
+  difficulty: BotDifficulty = 'medium'
+): BotPlayer[] {
   const botNames = [
     'Nova',
     'Cipher',
@@ -14,6 +24,10 @@ export function createBotPlayers(count: number, startSeat: number = 0): BotPlaye
     'Echo',
     'Blaze',
     'Nexus',
+    'Rogue',
+    'Storm',
+    'Prism',
+    'Wraith',
   ];
 
   return Array.from({ length: count }, (_, i) => ({
@@ -25,56 +39,37 @@ export function createBotPlayers(count: number, startSeat: number = 0): BotPlaye
     coinBalance: 1000,
     status: 'playing' as const,
     isBot: true,
+    difficulty,
   }));
 }
 
-// Bot decision making for Teen Patti
-export function getBotAction(
-  difficulty: 'easy' | 'medium' | 'hard' = 'medium'
-): 'fold' | 'call' | 'raise' {
-  const rand = Math.random();
-
-  switch (difficulty) {
-    case 'easy':
-      if (rand < 0.6) return 'fold';
-      if (rand < 0.9) return 'call';
-      return 'raise';
-
-    case 'medium':
-      if (rand < 0.4) return 'fold';
-      if (rand < 0.7) return 'call';
-      return 'raise';
-
-    case 'hard':
-      if (rand < 0.2) return 'fold';
-      if (rand < 0.5) return 'call';
-      return 'raise';
-  }
+/**
+ * Get bot difficulty display name
+ */
+export function getDifficultyLabel(difficulty: BotDifficulty): string {
+  const labels: Record<BotDifficulty, string> = {
+    easy: '🟢 Easy (Loose)',
+    medium: '🟡 Medium (Balanced)',
+    hard: '🔴 Hard (Smart)',
+  };
+  return labels[difficulty];
 }
 
-export function getBotRaiseAmount(
-  minBet: number,
-  pot: number,
-  difficulty: 'easy' | 'medium' | 'hard' = 'medium'
-): number {
-  const baseRaise = minBet * 2;
-
-  switch (difficulty) {
-    case 'easy':
-      return baseRaise + Math.random() * minBet * 2;
-
-    case 'medium':
-      return baseRaise + Math.random() * minBet * 3;
-
-    case 'hard':
-      // More aggressive raises for hard bots
-      return baseRaise + pot * 0.3 + Math.random() * minBet * 2;
-  }
+/**
+ * Get bot difficulty description
+ */
+export function getDifficultyDescription(difficulty: BotDifficulty): string {
+  const descriptions: Record<BotDifficulty, string> = {
+    easy: 'Makes risky plays and folds often. Great for beginners.',
+    medium: 'Balanced strategy. Moderate risk-taking.',
+    hard: 'Evaluates hand strength and plays optimally. Challenging opponent.',
+  };
+  return descriptions[difficulty];
 }
 
 // Bot typing speed simulation
 export function getBotTypingSpeed(
-  difficulty: 'easy' | 'medium' | 'hard' = 'medium'
+  difficulty: BotDifficulty = 'medium'
 ): { wpm: number; accuracy: number } {
   switch (difficulty) {
     case 'easy':
@@ -97,7 +92,9 @@ export function getBotTypingSpeed(
   }
 }
 
-// Simulate bot typing progress
+/**
+ * Simulate bot typing progress
+ */
 export function simulateBotTypingProgress(
   textLength: number,
   gamePhase: string,
