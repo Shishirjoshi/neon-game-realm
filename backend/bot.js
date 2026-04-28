@@ -15,6 +15,114 @@ const DIFFICULTY = {
 };
 
 /**
+ * 🔹 UTILITY: Get bot thinking delay (human-like)
+ */
+function getBotDelay(difficulty = DIFFICULTY.MEDIUM) {
+  switch (difficulty) {
+    case DIFFICULTY.EASY:
+      return 300 + Math.random() * 700; // 300-1000ms
+    case DIFFICULTY.MEDIUM:
+      return 500 + Math.random() * 1000; // 500-1500ms
+    case DIFFICULTY.HARD:
+      return 800 + Math.random() * 1200; // 800-2000ms
+    default:
+      return 500 + Math.random() * 1000;
+  }
+}
+
+/**
+ * 🔹 UTILITY: Evaluate hand strength (simple version)
+ */
+function evaluateHandStrength(hand) {
+  if (!hand || hand.length !== 3) return 'low';
+
+  try {
+    const evaluation = evaluateHand(hand);
+    const strengthMap = {
+      'trio': 'high',
+      'sequence': 'high',
+      'color': 'medium',
+      'pair': 'medium',
+      'high-card': 'low',
+      'invalid': 'low',
+    };
+    return strengthMap[evaluation.type] || 'low';
+  } catch (e) {
+    return 'low';
+  }
+}
+
+/**
+ * 🔹 BOT DECISION LOGIC - Main function
+ */
+function decideBotAction(bot, context) {
+  const { hand, pot, currentBet, activePlayers, minBet, coins } = context;
+  const strength = evaluateHandStrength(hand);
+  const potOdds = currentBet > 0 ? pot / currentBet : Infinity;
+  const playerCount = activePlayers || 1;
+
+  switch (bot.difficulty) {
+    // 🟢 EASY BOT (random, conservative)
+    case DIFFICULTY.EASY:
+      if (Math.random() < 0.65) return 'fold';
+      if (Math.random() < 0.90) return 'call';
+      return 'raise';
+
+    // 🟡 MEDIUM BOT (slightly smarter)
+    case DIFFICULTY.MEDIUM:
+      if (strength === 'high') {
+        return Math.random() < 0.7 ? 'raise' : 'call';
+      }
+      if (strength === 'medium') {
+        return Math.random() < 0.7 ? 'call' : 'fold';
+      }
+      return Math.random() < 0.4 ? 'call' : 'fold';
+
+    // 🔴 HARD BOT (intelligent, strategic)
+    case DIFFICULTY.HARD:
+      if (strength === 'high') {
+        // Strong hand: always bet/raise
+        if (pot > minBet * 5) {
+          return 'raise'; // Large pot: aggressive
+        }
+        return Math.random() < 0.8 ? 'raise' : 'call';
+      }
+      if (strength === 'medium') {
+        // Position: heads-up more aggressive
+        if (playerCount <= 2) {
+          return Math.random() < 0.85 ? 'call' : 'fold';
+        }
+        // Check pot odds
+        if (potOdds > 2) {
+          return 'call';
+        }
+        return Math.random() < 0.4 ? 'call' : 'fold';
+      }
+      // Weak hand: fold or bluff rarely
+      if (currentBet > minBet) {
+        return 'fold';
+      }
+      return Math.random() < 0.2 ? 'call' : 'fold';
+
+    default:
+      return 'call';
+  }
+}
+
+/**
+ * 🔹 UTILITY: Execute bot turn with delay
+ */
+function runBotTurn(bot, context, handleAction) {
+  const delay = getBotDelay(bot.difficulty);
+
+  setTimeout(() => {
+    const action = decideBotAction(bot, context);
+    if (!action) return;
+    handleAction(bot.id, action);
+  }, delay);
+}
+
+/**
  * TEEN PATTI BOT CLASS
  */
 class TeenPattiBot {
@@ -335,6 +443,13 @@ function createBots(count = 2, difficulty = DIFFICULTY.MEDIUM) {
 }
 
 module.exports = {
+  // Utility functions
+  getBotDelay,
+  evaluateHandStrength,
+  decideBotAction,
+  runBotTurn,
+
+  // Classes and utilities
   TeenPattiBot,
   BotManager,
   createBots,
