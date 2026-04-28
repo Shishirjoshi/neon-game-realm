@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, KeyRound, Plus } from "lucide-react";
+import { ArrowLeft, KeyRound, Plus, Zap } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { GlassPanel } from "@/components/GlassPanel";
 import { NeonButton } from "@/components/NeonButton";
@@ -24,6 +24,20 @@ export default function Lobby() {
   const game = GAMES.find((g) => g.id === gameId);
   if (!game) return <Navigate to="/" replace />;
   const playable = SUPPORTED.has(gameId!);
+
+  // Handle quick offline play
+  async function handlePlayOffline() {
+    if (!user || !game) return;
+    setBusy(true);
+    try {
+      // For offline mode, navigate directly to the game with a special offline code
+      navigate(`/play/${game.id}/offline`);
+    } catch (e: any) {
+      toast({ title: "Failed to start offline game", description: e.message, variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function handleCreate() {
     if (!user || !game) return;
@@ -153,8 +167,27 @@ export default function Lobby() {
             </div>
           </motion.div>
 
-          {/* Create / Join */}
-          <div className="grid sm:grid-cols-2 gap-4">
+          {/* Create / Join / Offline */}
+          <div className="grid sm:grid-cols-3 gap-4">
+            <GlassPanel strong className="p-6 flex flex-col">
+              <div className="h-10 w-10 rounded-xl bg-accent/20 grid place-items-center mb-4">
+                <Zap className="h-5 w-5 text-accent" />
+              </div>
+              <h2 className="font-display text-xl font-bold">Play offline</h2>
+              <p className="text-sm text-muted-foreground mt-1 mb-6">
+                Challenge AI bots instantly, no setup needed.
+              </p>
+              <NeonButton
+                size="lg"
+                variant="accent"
+                className="mt-auto w-full"
+                onClick={handlePlayOffline}
+                disabled={busy}
+              >
+                <Zap className="h-4 w-4" /> Play offline
+              </NeonButton>
+            </GlassPanel>
+
             <GlassPanel strong className="p-6 flex flex-col">
               <div className="h-10 w-10 rounded-xl bg-primary/20 grid place-items-center mb-4">
                 <Plus className="h-5 w-5 text-primary-glow" />
