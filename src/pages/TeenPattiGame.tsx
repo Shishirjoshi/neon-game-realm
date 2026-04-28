@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useSocket } from '@/contexts/SocketContext';
@@ -27,135 +27,137 @@ export default function TeenPattiGame() {
   const gameEngineRef = useRef<LocalGameEngine | null>(null);
 
   /**
+   * Handle bot action for UI updates
+   */
+  const handleBotAction = useCallback(
+    (playerId: string, action: string, amount: number) => {
+      // Clear thinking indicator for this bot
+      setThinkingBots((prev) => {
+        const next = new Set(prev);
+        next.delete(playerId);
+        return next;
+      });
+    },
+    []
+  );
+
+  /**
    * Initialize offline game with bot players
    */
-  const initializeOfflineGame = (
-    botPlayers: GamePlayer[],
-    difficulty: BotDifficulty = 'medium'
-  ) => {
-    setIsOffline(true);
+  const initializeOfflineGame = useCallback(
+    (botPlayers: GamePlayer[], difficulty: BotDifficulty = 'medium') => {
+      setIsOffline(true);
 
-    // Create all players
-    const humanPlayer: GamePlayer = {
-      id: user?.id || 'player-1',
-      username: user?.user_metadata?.username || 'You',
-      avatar_url: null,
-      seat: 0,
-      isReady: true,
-      coinBalance: 1000,
-      status: 'playing' as const,
-    };
+      // Create all players
+      const humanPlayer: GamePlayer = {
+        id: user?.id || 'player-1',
+        username: user?.user_metadata?.username || 'You',
+        avatar_url: null,
+        seat: 0,
+        isReady: true,
+        coinBalance: 1000,
+        status: 'playing' as const,
+      };
 
-    const allPlayers = [
-      humanPlayer,
-      ...botPlayers.map((bot, i) => ({
-        ...bot,
-        seat: i + 1,
-      })),
-    ];
+      const allPlayers = [
+        humanPlayer,
+        ...botPlayers.map((bot, i) => ({
+          ...bot,
+          seat: i + 1,
+        })),
+      ];
 
-    // Create local game engine
-    const engine = new LocalGameEngine('teen-patti', allPlayers, {
-      onStateUpdate: (updates) => {
-        setGameState((prev) => (prev ? { ...prev, ...updates } : null));
-      },
-      onBotAction: (playerId, action, amount) => {
-        handleBotAction(playerId, action, amount);
-      },
-      onGameEnd: (winners) => {
-        console.log('Game ended. Winners:', winners);
-      },
-    });
+      // Create local game engine
+      const engine = new LocalGameEngine('teen-patti', allPlayers, {
+        onStateUpdate: (updates) => {
+          setGameState((prev) => (prev ? { ...prev, ...updates } : null));
+        },
+        onBotAction: (playerId, action, amount) => {
+          handleBotAction(playerId, action, amount);
+        },
+        onGameEnd: (winners) => {
+          console.log('Game ended. Winners:', winners);
+        },
+      });
 
-    // Set bot difficulties
-    botPlayers.forEach((bot) => {
-      engine.setBotDifficulty(bot.id, difficulty);
-    });
+      // Set bot difficulties
+      botPlayers.forEach((bot) => {
+        engine.setBotDifficulty(bot.id, difficulty);
+      });
 
-    gameEngineRef.current = engine;
+      gameEngineRef.current = engine;
 
-    // Create initial game state
-    const initialState: TeenPattiGameState = {
-      type: 'teen-patti',
-      players: allPlayers,
-      currentPlayerTurn: allPlayers[0].id,
-      communityCards: [],
-      pot: 0,
-      minimumBet: 50,
-      yourCards: ['K♠', 'Q♦', 'J♣'],
-      yourSeat: 0,
-      gamePhase: 'dealing',
-      roundHistory: [],
-    };
+      // Create initial game state
+      const initialState: TeenPattiGameState = {
+        type: 'teen-patti',
+        players: allPlayers,
+        currentPlayerTurn: allPlayers[0].id,
+        communityCards: [],
+        pot: 0,
+        minimumBet: 50,
+        yourCards: ['K♠', 'Q♦', 'J♣'],
+        yourSeat: 0,
+        gamePhase: 'dealing',
+        roundHistory: [],
+      };
 
-    setGameState(initialState);
-    setLoading(false);
+      setGameState(initialState);
+      setLoading(false);
 
-    // Start game after delay
-    setTimeout(() => {
-      engine.startGame();
-    }, 1000);
-  };
+      // Start game after delay
+      setTimeout(() => {
+        engine.startGame();
+      }, 1000);
+    },
+    [user, setGameState, handleBotAction]
+  );
 
   /**
    * Handle game mode selection
    */
-  const handleModeSelected = (
-    mode: 'online' | 'offline',
-    botCount?: number,
-    difficulty?: BotDifficulty
-  ) => {
-    if (mode === 'offline' && botCount && difficulty) {
-      const bots = createBotPlayers(botCount, 1, difficulty);
-      initializeOfflineGame(bots, difficulty);
-      setShowModeSetup(false);
-    } else if (mode === 'online') {
-      // Continue with online mode
-      setShowModeSetup(false);
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Handle bot action for UI updates
-   */
-  const handleBotAction = (
-    playerId: string,
-    action: string,
-    amount: number
-  ) => {
-    // Clear thinking indicator for this bot
-    setThinkingBots((prev) => {
-      const next = new Set(prev);
-      next.delete(playerId);
-      return next;
-    });
-  };
+  const handleModeSelected = useCallback(
+    (
+      mode: 'online' | 'offline',
+      botCount?: number,
+      difficulty?: BotDifficulty
+    ) => {
+      if (mode === 'offline' && botCount && difficulty) {
+        const bots = createBotPlayers(botCount, 1, difficulty);
+        initializeOfflineGame(bots, difficulty);
+        setShowModeSetup(false);
+      } else if (mode === 'online') {
+        // Continue with online mode
+        setShowModeSetup(false);
+        setLoading(false);
+      }
+    },
+    [initializeOfflineGame]
+  );
 
   /**
    * Handle player action (for both online and offline)
    */
-  const handleGameAction = (
-    action: 'fold' | 'call' | 'raise' | 'show',
-    amount?: number
-  ) => {
-    if (isOffline && gameEngineRef.current) {
-      // Offline mode - use local engine
-      gameEngineRef.current.handlePlayerAction(
-        user?.id || '',
-        action,
-        amount
-      );
-    } else if (socket && user) {
-      // Online mode - use socket
-      socket.emit('gameAction', {
-        roomCode: code,
-        userId: user.id,
-        action,
-        amount: amount || 0,
-      });
-    }
-  };
+  const handleGameAction = useCallback(
+    (action: 'fold' | 'call' | 'raise' | 'show', amount?: number) => {
+      if (isOffline && gameEngineRef.current) {
+        // Offline mode - use local engine
+        gameEngineRef.current.handlePlayerAction(
+          user?.id || '',
+          action,
+          amount
+        );
+      } else if (socket && user) {
+        // Online mode - use socket
+        socket.emit('gameAction', {
+          roomCode: code,
+          userId: user.id,
+          action,
+          amount: amount || 0,
+        });
+      }
+    },
+    [isOffline, user, socket, code]
+  );
 
   // Initialize game
   useEffect(() => {
