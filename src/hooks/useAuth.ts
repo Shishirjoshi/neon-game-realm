@@ -17,30 +17,38 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listener FIRST
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-      if (!newSession?.user) {
-        setProfile(null);
-      } else {
-        // Defer profile fetch to avoid deadlock
-        setTimeout(() => fetchProfile(newSession.user.id), 0);
-      }
-    });
+    try {
+      // Listener FIRST
+      const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+        if (!newSession?.user) {
+          setProfile(null);
+        } else {
+          // Defer profile fetch to avoid deadlock
+          setTimeout(() => fetchProfile(newSession.user.id), 0);
+        }
+      });
 
-    // Then existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id).finally(() => setLoading(false));
-      } else {
+      // Then existing session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchProfile(session.user.id).finally(() => setLoading(false));
+        } else {
+          setLoading(false);
+        }
+      }).catch((error) => {
+        console.error('Failed to get session:', error);
         setLoading(false);
-      }
-    });
+      });
 
-    return () => sub.subscription.unsubscribe();
+      return () => sub.subscription.unsubscribe();
+    } catch (error) {
+      console.error('Failed to initialize auth:', error);
+      setLoading(false);
+    }
   }, []);
 
   async function fetchProfile(userId: string) {

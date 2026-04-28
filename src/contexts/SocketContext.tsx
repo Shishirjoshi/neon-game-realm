@@ -14,19 +14,24 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    const socketInstance = initSocket();
-    setSocket(socketInstance);
+    try {
+      const socketInstance = initSocket();
+      setSocket(socketInstance);
 
-    const handleConnect = () => setConnected(true);
-    const handleDisconnect = () => setConnected(false);
+      const handleConnect = () => setConnected(true);
+      const handleDisconnect = () => setConnected(false);
 
-    socketInstance.on('connect', handleConnect);
-    socketInstance.on('disconnect', handleDisconnect);
+      socketInstance.on('connect', handleConnect);
+      socketInstance.on('disconnect', handleDisconnect);
 
-    return () => {
-      socketInstance.off('connect', handleConnect);
-      socketInstance.off('disconnect', handleDisconnect);
-    };
+      return () => {
+        socketInstance.off('connect', handleConnect);
+        socketInstance.off('disconnect', handleDisconnect);
+      };
+    } catch (error) {
+      console.error('Failed to initialize socket:', error);
+      setSocket(null);
+    }
   }, []);
 
   useEffect(() => {
