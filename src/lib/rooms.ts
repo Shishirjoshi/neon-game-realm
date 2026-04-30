@@ -14,9 +14,6 @@ export async function createRoomWithUniqueCode(opts: {
   game_type:
     | "teen-patti"
     | "typing"
-    | "neon-strike"
-    | "velocity-rush"
-    | "block-blast"
     | "glass-chess";
   host_id: string;
   max_players?: number;
