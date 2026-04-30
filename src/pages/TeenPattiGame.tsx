@@ -213,13 +213,15 @@ export default function TeenPattiGame() {
     };
 
     const handleError = (errorMsg: string) => {
+      console.error('Game error:', errorMsg);
       setError(errorMsg);
-      setTimeout(() => navigate('/'), 3000);
+      // Don't auto-navigate, let user dismiss the error
     };
 
     socket.on('gameState', handleGameState);
     socket.on('gameUpdate', handleGameUpdate);
     socket.on('error', handleError);
+    socket.on('connect_error', handleError);
 
     return () => {
       socket.off('gameState', handleGameState);
@@ -241,9 +243,22 @@ export default function TeenPattiGame() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <GlassPanel className="p-8 max-w-md">
-          <h2 className="text-2xl font-bold text-red-400 mb-2">Error</h2>
+          <h2 className="text-2xl font-bold text-red-400 mb-2">Connection Error</h2>
           <p className="text-muted-foreground mb-4">{error}</p>
-          <p className="text-xs text-muted-foreground">Redirecting...</p>
+          <div className="flex gap-2 mt-6">
+            <button
+              onClick={() => navigate('/lobby')}
+              className="flex-1 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
+            >
+              Back to Lobby
+            </button>
+            <button
+              onClick={() => { setError(null); setLoading(true); }}
+              className="flex-1 px-4 py-2 rounded-lg bg-muted text-foreground hover:bg-muted/80 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
         </GlassPanel>
       </div>
     );
