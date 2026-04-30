@@ -8,6 +8,7 @@ import type { GamePlayer, TeenPattiGameState } from '@/contexts/GameContext';
 import { getBotDecision, getBotThinkDelay } from './teenpatti/botLogic';
 import type { BotDifficulty } from './teenpatti/botLogic';
 import type { Card } from './teenpatti/handEvaluator';
+import { evaluateHand } from './teenpatti/handEvaluator';
 
 export interface LocalRoom {
   roomId: string;
@@ -138,6 +139,11 @@ export class LocalGameEngine {
           this.room.deck[cardIndex++],
         ];
       }
+    });
+
+    // Set all active players to 'playing' status after dealing
+    activePlayers.forEach((p) => {
+      p.status = 'playing';
     });
 
     this.emitStateUpdate();
@@ -279,15 +285,36 @@ export class LocalGameEngine {
       // Everyone else folded
       const winner = activePlayers[0];
       winner.coinBalance = (winner.coinBalance || 0) + this.room.pot;
+      winner.status = 'won';
       this.room.gamePhase = 'completed';
       this.callbacks.onGameEnd?.([winner.id]);
     } else {
-      // Showdown
+      // Showdown - compare hands properly
       this.room.gamePhase = 'showdown';
-      // Here you would compare hands and determine winner
-      // For MVP, just give pot to random active player
-      const winner = activePlayers[Math.floor(Math.random() * activePlayers.length)];
+
+      let bestHandIdx = 0;
+      let bestHandRank = -1;
+
+      activePlayers.forEach((player, idx) => {
+        const hand = this.room.playerHands[player.id] || [];
+        const handEval = evaluateHand(hand);
+        if (handEval.rank > bestHandRank) {
+          bestHandRank = handEval.rank;
+          bestHandIdx = idx;
+        }
+      });
+
+      const winner = activePlayers[bestHandIdx];
       winner.coinBalance = (winner.coinBalance || 0) + this.room.pot;
+      winner.status = 'won';
+
+      // Set others to folded for visual clarity
+      activePlayers.forEach((p) => {
+        if (p.id !== winner.id) {
+          p.status = 'folded';
+        }
+      });
+
       this.callbacks.onGameEnd?.([winner.id]);
     }
 
@@ -301,14 +328,14 @@ export class LocalGameEngine {
     if (!this.callbacks.onStateUpdate) return;
 
     // Find the human player (first player is human in offline mode)
-    const humanPlayer = this.room.players[0];
+    const humanPlayer = this.room.players.find(p => !p.isBot);
     const humanCards = humanPlayer ? this.room.playerHands[humanPlayer.id] || [] : [];
 
     // Format cards for display (e.g., { rank: 'K', suit: 'hearts' } -> 'K♥')
     const formatCard = (card: any) => {
       if (typeof card === 'string') return card; // Already formatted
       if (!card || typeof card !== 'object') return '';
-      
+
       const suitSymbols: Record<string, string> = {
         hearts: '♥',
         diamonds: '♦',
@@ -321,7 +348,13 @@ export class LocalGameEngine {
     const formattedCards = humanCards.map(formatCard);
 
     const state: Partial<TeenPattiGameState> = {
-      players: this.room.players,
+      players: this.room.players.map(p => ({
+        ...p,
+        // Ensure status is always valid
+        status: ['idle', 'playing', 'folded', 'won'].includes(p.status)
+          ? p.status
+          : 'playing',
+      })),
       currentPlayerTurn: this.room.players[this.room.currentTurnIndex]?.id,
       pot: this.room.pot,
       minimumBet: this.room.minBet,
