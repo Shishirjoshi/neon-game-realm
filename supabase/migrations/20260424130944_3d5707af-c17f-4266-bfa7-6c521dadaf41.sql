@@ -2,7 +2,7 @@
 -- ENUMS
 -- =========================================
 CREATE TYPE public.app_role AS ENUM ('admin', 'player');
-CREATE TYPE public.game_type AS ENUM ('teen-patti', 'typing', 'neon-strike', 'velocity-rush', 'block-blast', 'glass-chess');
+CREATE TYPE public.game_type AS ENUM ('teen-patti', 'glass-chess');
 CREATE TYPE public.room_status AS ENUM ('waiting', 'in_progress', 'finished');
 CREATE TYPE public.player_status AS ENUM ('waiting', 'ready', 'playing', 'folded', 'out');
 

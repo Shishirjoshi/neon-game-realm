@@ -12,7 +12,7 @@ import { GAMES } from "@/data/games";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
-const SUPPORTED = new Set(["teen-patti", "typing"]);
+const SUPPORTED = new Set(["teen-patti"]);
 
 export default function Lobby() {
   const { gameId } = useParams<{ gameId: string }>();

@@ -13,7 +13,6 @@ export function generateRoomCode(len = 6): string {
 export async function createRoomWithUniqueCode(opts: {
   game_type:
     | "teen-patti"
-    | "typing"
     | "glass-chess";
   host_id: string;
   max_players?: number;

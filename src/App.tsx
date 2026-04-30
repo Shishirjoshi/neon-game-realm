@@ -9,7 +9,6 @@ import Index from "./pages/Index.tsx";
 import Lobby from "./pages/Lobby.tsx";
 import Room from "./pages/Room.tsx";
 import TeenPattiGame from "./pages/TeenPattiGame.tsx";
-import TypingRaceGamePage from "./pages/TypingRaceGamePage.tsx";
 import GamePlaceholder from "./pages/GamePlaceholder.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -29,7 +28,6 @@ const App = () => {
                 <Route path="/lobby/:gameId" element={<Lobby />} />
                 <Route path="/room/:code" element={<Room />} />
                 <Route path="/play/teen-patti/:code" element={<TeenPattiGame />} />
-                <Route path="/play/typing/:code" element={<TypingRaceGamePage />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
