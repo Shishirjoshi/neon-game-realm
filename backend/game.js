@@ -46,32 +46,34 @@ function getRankValue(rank) {
 }
 
 function evaluateHand(hand) {
+  if (!hand || hand.length !== 3) return { type: 'invalid', value: 0, high: 0 };
+  
   const ranks = hand.map(c => getRankValue(c.rank)).sort((a, b) => b - a);
   const suits = hand.map(c => c.suit);
   
-  // Check trio
+  // Check Trio (highest rank)
   if (ranks[0] === ranks[1] && ranks[1] === ranks[2]) {
-    return { type: 'trio', value: 5, high: ranks[0] };
+    return { type: 'trio', value: 5, high: ranks[0], description: `Trio of ${hand[0].rank}s` };
   }
   
-  // Check sequence
+  // Check Sequence (straight)
   if (ranks[0] - ranks[1] === 1 && ranks[1] - ranks[2] === 1) {
-    return { type: 'sequence', value: 4, high: ranks[0] };
+    return { type: 'sequence', value: 4, high: ranks[0], description: `Sequence ${ranks[0]}-${ranks[1]}-${ranks[2]}` };
   }
   
-  // Check color
+  // Check Color (flush - all same suit)
   if (suits[0] === suits[1] && suits[1] === suits[2]) {
-    return { type: 'color', value: 3, high: ranks[0] };
+    return { type: 'color', value: 3, high: ranks[0], description: `Color (all ${suits[0]})` };
   }
   
-  // Check pair
+  // Check Pair
   if (ranks[0] === ranks[1] || ranks[1] === ranks[2] || ranks[0] === ranks[2]) {
-    const pairRank = ranks[0] === ranks[1] ? ranks[0] : ranks[2];
-    return { type: 'pair', value: 2, high: pairRank };
+    const pairRank = ranks[0] === ranks[1] ? ranks[0] : (ranks[1] === ranks[2] ? ranks[1] : ranks[0]);
+    return { type: 'pair', value: 2, high: pairRank, description: `Pair of ${Object.entries({2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,J:11,Q:12,K:13,A:14}).find(([k,v]) => v === pairRank)?.[0]}s` };
   }
   
-  // High card
-  return { type: 'highcard', value: 1, high: ranks[0] };
+  // High Card (lowest rank)
+  return { type: 'highcard', value: 1, high: ranks[0], description: `High Card ${ranks.join('-')}` };
 }
 
 function getWinner(players) {
@@ -107,11 +109,23 @@ export class GameManager {
       roomId,
       hostId,
       players: [
-        { id: hostId, name: hostName, coins: 1000, hand: [], folded: false, currentBet: 0 }
+        { 
+          id: hostId, 
+          name: hostName, 
+          coins: 1000, 
+          hand: [], 
+          folded: false, 
+          currentBet: 0,
+          hasPlayed: false // Track if player has acted this round
+        }
       ],
       pot: 0,
       currentTurn: 0,
-      state: 'waiting' // waiting | playing | finished
+      state: 'waiting', // waiting | playing | showdown | finished
+      round: 0,
+      turnCount: 0, // Track how many players have taken turns
+      roundStarted: false,
+      deck: []
     };
     
     this.rooms.set(roomId, room);
@@ -130,7 +144,8 @@ export class GameManager {
       coins: 1000,
       hand: [],
       folded: false,
-      currentBet: 0
+      currentBet: 0,
+      hasPlayed: false
     });
     
     return room;
@@ -143,24 +158,28 @@ export class GameManager {
     room.state = 'playing';
     room.pot = 0;
     room.currentTurn = 0;
+    room.round = 1;
+    room.turnCount = 0;
+    room.roundStarted = true;
     
     // Reset players
     room.players.forEach(p => {
       p.hand = [];
       p.folded = false;
       p.currentBet = 0;
+      p.hasPlayed = false;
     });
     
     // Deal cards
-    const deck = shuffleDeck(createDeck());
-    dealCards(room.players, deck);
+    room.deck = shuffleDeck(createDeck());
+    dealCards(room.players, room.deck);
     
     return room;
   }
 
   playerAction(roomId, playerId, action) {
     const room = this.rooms.get(roomId);
-    if (!room || room.state !== 'playing') return null;
+    if (!room || !['playing', 'showdown'].includes(room.state)) return null;
     
     const player = room.players.find(p => p.id === playerId);
     if (!player || player.folded) return null;
@@ -168,31 +187,98 @@ export class GameManager {
     const currentPlayer = room.players[room.currentTurn];
     if (currentPlayer.id !== playerId) return null;
     
+    // Handle BET action
     if (action === 'bet') {
-      if (player.coins >= 10) {
-        player.coins -= 10;
-        player.currentBet += 10;
-        room.pot += 10;
+      const betAmount = 10; // Fixed bet
+      if (player.coins >= betAmount) {
+        player.coins -= betAmount;
+        player.currentBet += betAmount;
+        room.pot += betAmount;
+      } else {
+        return null; // Not enough coins
       }
-    } else if (action === 'fold') {
+    } 
+    // Handle FOLD action
+    else if (action === 'fold') {
       player.folded = true;
     }
+    // Handle SHOW action (for multiplayer rounds)
+    else if (action === 'show') {
+      player.hasPlayed = true;
+    }
     
-    // Check if game ends
+    player.hasPlayed = true;
+    room.turnCount++;
+    
+    // Check if game ends (only 1 player left)
     const activePlayers = room.players.filter(p => !p.folded);
     if (activePlayers.length === 1) {
       room.state = 'finished';
       const winner = activePlayers[0];
       winner.coins += room.pot;
-      room.winner = winner.name;
+      room.winner = {
+        id: winner.id,
+        name: winner.name,
+        coins: winner.coins,
+        reason: 'All other players folded'
+      };
       return room;
     }
     
-    // Next turn
+    // Move to next turn (skip folded players)
+    this.advanceTurn(room);
+    
+    // Check if all active players have played
+    const allHavePlayed = activePlayers.every(p => p.hasPlayed);
+    if (allHavePlayed && room.turnCount >= activePlayers.length) {
+      // Move to showdown
+      room.state = 'showdown';
+      return this.resolveShowdown(room);
+    }
+    
+    return room;
+  }
+
+  advanceTurn(room) {
     room.currentTurn = (room.currentTurn + 1) % room.players.length;
+    
+    // Skip folded players
     while (room.players[room.currentTurn].folded) {
       room.currentTurn = (room.currentTurn + 1) % room.players.length;
     }
+  }
+
+  resolveShowdown(room) {
+    const activePlayers = room.players.filter(p => !p.folded);
+    
+    if (activePlayers.length === 0) return room;
+    
+    // Find winner by hand strength
+    let winner = activePlayers[0];
+    let winningHand = evaluateHand(winner.hand);
+    
+    for (let i = 1; i < activePlayers.length; i++) {
+      const hand = evaluateHand(activePlayers[i].hand);
+      
+      if (hand.value > winningHand.value || 
+          (hand.value === winningHand.value && hand.high > winningHand.high)) {
+        winner = activePlayers[i];
+        winningHand = hand;
+      }
+    }
+    
+    // Award pot to winner
+    winner.coins += room.pot;
+    room.state = 'finished';
+    room.winner = {
+      id: winner.id,
+      name: winner.name,
+      coins: winner.coins,
+      hand: winner.hand,
+      handType: winningHand.type,
+      handDescription: winningHand.description,
+      reason: 'Best hand'
+    };
     
     return room;
   }

@@ -300,13 +300,41 @@ export class LocalGameEngine {
   private emitStateUpdate(): void {
     if (!this.callbacks.onStateUpdate) return;
 
+    // Find the human player (first player is human in offline mode)
+    const humanPlayer = this.room.players[0];
+    const humanCards = humanPlayer ? this.room.playerHands[humanPlayer.id] || [] : [];
+
+    // Format cards for display (e.g., { rank: 'K', suit: 'hearts' } -> 'K♥')
+    const formatCard = (card: any) => {
+      if (typeof card === 'string') return card; // Already formatted
+      if (!card || typeof card !== 'object') return '';
+      
+      const suitSymbols: Record<string, string> = {
+        hearts: '♥',
+        diamonds: '♦',
+        clubs: '♣',
+        spades: '♠',
+      };
+      return `${card.rank}${suitSymbols[card.suit] || '?'}`;
+    };
+
+    const formattedCards = humanCards.map(formatCard);
+
     const state: Partial<TeenPattiGameState> = {
       players: this.room.players,
       currentPlayerTurn: this.room.players[this.room.currentTurnIndex]?.id,
       pot: this.room.pot,
       minimumBet: this.room.minBet,
       gamePhase: this.room.gamePhase,
+      yourCards: formattedCards as any,
     };
+
+    console.log('📊 Emitting state update:', {
+      phase: state.gamePhase,
+      turn: state.currentPlayerTurn,
+      yourCards: formattedCards,
+      pot: state.pot,
+    });
 
     this.callbacks.onStateUpdate(state);
   }

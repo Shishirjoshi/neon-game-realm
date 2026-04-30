@@ -18,46 +18,65 @@ export function useAuth() {
 
   useEffect(() => {
     try {
+      console.log('🔐 useAuth initializing...');
+      
       // Listener FIRST
       const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+        console.log('🔄 Auth state changed:', _event, 'Session:', !!newSession);
         setSession(newSession);
         setUser(newSession?.user ?? null);
         if (!newSession?.user) {
           setProfile(null);
         } else {
           // Defer profile fetch to avoid deadlock
+          console.log('👤 Fetching profile for user:', newSession.user.id);
           setTimeout(() => fetchProfile(newSession.user.id), 0);
         }
       });
 
       // Then existing session
       supabase.auth.getSession().then(({ data: { session } }) => {
+        console.log('✅ Got existing session:', !!session);
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          fetchProfile(session.user.id).finally(() => setLoading(false));
+          console.log('👤 Fetching profile for existing user:', session.user.id);
+          fetchProfile(session.user.id).finally(() => {
+            console.log('✅ useAuth loading complete');
+            setLoading(false);
+          });
         } else {
+          console.log('📵 No existing session');
           setLoading(false);
         }
       }).catch((error) => {
-        console.error('Failed to get session:', error);
+        console.error('❌ Failed to get session:', error);
         setLoading(false);
       });
 
-      return () => sub.subscription.unsubscribe();
+      return () => {
+        console.log('🧹 Cleaning up auth listener');
+        sub.subscription.unsubscribe();
+      };
     } catch (error) {
-      console.error('Failed to initialize auth:', error);
+      console.error('❌ Failed to initialize auth:', error);
       setLoading(false);
     }
   }, []);
 
   async function fetchProfile(userId: string) {
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (data) setProfile(data as Profile);
+    console.log('🔍 Fetching profile for:', userId);
+    try {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .maybeSingle();
+      console.log('👤 Profile data:', data);
+      if (data) setProfile(data as Profile);
+    } catch (error) {
+      console.error('❌ Error fetching profile:', error);
+    }
   }
 
   async function refreshProfile() {

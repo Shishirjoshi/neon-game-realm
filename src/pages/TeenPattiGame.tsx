@@ -49,6 +49,7 @@ export default function TeenPattiGame() {
    */
   const initializeOfflineGame = useCallback(
     (botPlayers: GamePlayer[], difficulty: BotDifficulty = 'medium') => {
+      console.log('🎮 Initializing offline game with', botPlayers.length, 'bots at', difficulty, 'difficulty');
       setIsOffline(true);
 
       // Create all players
@@ -70,16 +71,25 @@ export default function TeenPattiGame() {
         })),
       ];
 
+      console.log('👥 All players:', allPlayers.map(p => `${p.username}(${p.id})`).join(', '));
+
       // Create local game engine
       const engine = new LocalGameEngine('teen-patti', allPlayers, {
         onStateUpdate: (updates) => {
-          setGameState((prev) => (prev ? { ...prev, ...updates } : null));
+          console.log('🔄 Game state update:', updates);
+          setGameState((prev) => {
+            if (!prev) return null;
+            const newState = { ...prev, ...updates };
+            console.log('📊 New game state:', newState.gamePhase, 'Turn:', newState.currentPlayerTurn);
+            return newState;
+          });
         },
         onBotAction: (playerId, action, amount) => {
+          console.log('🤖 Bot action:', action, 'amount:', amount);
           handleBotAction(playerId, action, amount);
         },
         onGameEnd: (winners) => {
-          console.log('Game ended. Winners:', winners);
+          console.log('🏆 Game ended. Winners:', winners);
         },
       });
 
@@ -94,21 +104,24 @@ export default function TeenPattiGame() {
       const initialState: TeenPattiGameState = {
         type: 'teen-patti',
         players: allPlayers,
-        currentPlayerTurn: allPlayers[0].id,
+        currentPlayerTurn: humanPlayer.id,
         communityCards: [],
         pot: 0,
         minimumBet: 50,
-        yourCards: ['K♠', 'Q♦', 'J♣'],
+        yourCards: [],
         yourSeat: 0,
         gamePhase: 'dealing',
         roundHistory: [],
       };
 
+      console.log('📍 Setting initial game state');
       setGameState(initialState);
       setLoading(false);
 
       // Start game after delay
+      console.log('⏱️ Starting game in 1000ms...');
       setTimeout(() => {
+        console.log('🚀 Starting game engine');
         engine.startGame();
       }, 1000);
     },
@@ -124,11 +137,14 @@ export default function TeenPattiGame() {
       botCount?: number,
       difficulty?: BotDifficulty
     ) => {
+      console.log('🎯 Mode selected:', mode, { botCount, difficulty });
       if (mode === 'offline' && botCount && difficulty) {
+        console.log('✅ Creating offline game with', botCount, 'bots');
         const bots = createBotPlayers(botCount, 1, difficulty);
         initializeOfflineGame(bots, difficulty);
         setShowModeSetup(false);
       } else if (mode === 'online') {
+        console.log('✅ Online mode selected');
         // Continue with online mode
         setShowModeSetup(false);
         setLoading(false);
@@ -162,35 +178,40 @@ export default function TeenPattiGame() {
     [isOffline, user, socket, code]
   );
 
-  // Initialize game
+  // Initialize game - handle offline vs online
   useEffect(() => {
-    // Check if this is an offline game request - only show setup modal once
-    if (code === 'offline' && !offlineInitializedRef.current) {
-      offlineInitializedRef.current = true;
-      setShowModeSetup(true);
-      setLoading(false);
+    console.log('🔧 TeenPattiGame init effect - code:', code, 'user:', user?.id, 'currentRoom:', currentRoom?.roomCode);
+
+    // Offline mode: show setup if code is 'offline'
+    if (code === 'offline') {
+      console.log('📵 Offline mode detected');
+      if (!offlineInitializedRef.current) {
+        console.log('🎬 Starting offline initialization');
+        offlineInitializedRef.current = true;
+        setShowModeSetup(true);
+        setLoading(false);
+      }
       return;
     }
 
-    // Check if we already have bot players set up
+    // Reset offline ref when not in offline mode
+    offlineInitializedRef.current = false;
+
+    // Check if we already have bot players from context (from previous setup)
     if (currentRoom?.botPlayers && currentRoom.botPlayers.length > 0 && !gameState) {
+      console.log('🤖 Found bot players in context, initializing offline game');
       initializeOfflineGame(currentRoom.botPlayers, currentRoom.difficulty || 'medium');
       return;
     }
 
-    // If no code and no current room, show mode setup
-    if (!code && !currentRoom) {
-      setShowModeSetup(true);
-      setLoading(false);
-      return;
-    }
-
-    // Online mode - use socket
+    // Online mode - must have socket, user, and code
     if (!socket || !user || !code) {
+      console.log('⏸️ Waiting for socket/user/code');
       setLoading(false);
       return;
     }
 
+    console.log('🌐 Online mode - joining room:', code);
     setLoading(true);
 
     // Join game room via Socket
@@ -203,17 +224,19 @@ export default function TeenPattiGame() {
 
     // Listen for game state updates
     const handleGameState = (state: TeenPattiGameState) => {
+      console.log('📥 Game state received');
       setGameState(state);
       setLoading(false);
     };
 
     // Listen for game updates
     const handleGameUpdate = (update: Partial<TeenPattiGameState>) => {
+      console.log('📤 Game update received');
       setGameState((prev) => (prev ? { ...prev, ...update } : null));
     };
 
     const handleError = (errorMsg: string) => {
-      console.error('Game error:', errorMsg);
+      console.error('❌ Game error:', errorMsg);
       setError(errorMsg);
       // Don't auto-navigate, let user dismiss the error
     };
@@ -227,8 +250,9 @@ export default function TeenPattiGame() {
       socket.off('gameState', handleGameState);
       socket.off('gameUpdate', handleGameUpdate);
       socket.off('error', handleError);
+      socket.off('connect_error', handleError);
     };
-  }, [socket, user, code, setGameState, currentRoom, gameState, initializeOfflineGame, navigate])
+  }, [code, currentRoom, gameState, initializeOfflineGame, socket, user, setGameState])
 
   // Cleanup on unmount
   useEffect(() => {
@@ -240,6 +264,7 @@ export default function TeenPattiGame() {
   }, []);
 
   if (error) {
+    console.log('❌ Showing error UI:', error);
     return (
       <div className="min-h-screen flex items-center justify-center">
         <GlassPanel className="p-8 max-w-md">
@@ -265,6 +290,7 @@ export default function TeenPattiGame() {
   }
 
   if (showModeSetup && !currentRoom?.botPlayers) {
+    console.log('🎮 Showing game mode setup modal');
     return (
       <GameModeSetup
         onModeSelected={handleModeSelected}
@@ -274,6 +300,7 @@ export default function TeenPattiGame() {
   }
 
   if (loading || !gameState || gameState.type !== 'teen-patti') {
+    console.log('⏳ Showing loading screen - loading:', loading, 'gameState:', !!gameState);
     return (
       <div className="min-h-screen flex items-center justify-center">
         <motion.div
@@ -285,6 +312,7 @@ export default function TeenPattiGame() {
     );
   }
 
+  console.log('✅ Showing game table');
   return (
     <TeenPattiTable
       gameState={gameState}

@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, TrendingUp } from 'lucide-react';
 import { PlayerAvatar } from './PlayerAvatar';
 import { NeonButton } from './NeonButton';
 import { cn } from '@/lib/utils';
-import type { TeenPattiGameState, GamePlayer } from '@/contexts/GameContext';
+import type { TeenPattiGameState } from '@/contexts/GameContext';
 
 interface TeenPattiTableProps {
   gameState: TeenPattiGameState;
@@ -15,11 +15,6 @@ interface TeenPattiTableProps {
 export function TeenPattiTable({ gameState, currentUserId, onAction }: TeenPattiTableProps) {
   const [selectedRaiseAmount, setSelectedRaiseAmount] = useState(0);
   const [showRaiseModal, setShowRaiseModal] = useState(false);
-
-  const currentUserSeat = useMemo(
-    () => gameState.players.find((p) => p.id === currentUserId)?.seat ?? 0,
-    [gameState.players, currentUserId]
-  );
 
   const isCurrentPlayerTurn = gameState.currentPlayerTurn === currentUserId;
 
@@ -38,15 +33,15 @@ export function TeenPattiTable({ gameState, currentUserId, onAction }: TeenPatti
   }, []);
 
   return (
-    <div className="relative w-full h-full min-h-screen bg-gradient-to-b from-background via-background to-primary/5">
+    <div className="relative w-full min-h-screen bg-gradient-to-b from-background via-background to-primary/5 pb-56">
       {/* Table background */}
       <div className="absolute inset-0 pointer-events-none">
         {/* Circular table gradient */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-gradient-to-br from-primary/20 via-accent/10 to-transparent blur-3xl" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-primary/20 via-accent/10 to-transparent blur-3xl" />
       </div>
 
       {/* Players Circle */}
-      <div className="relative w-full h-screen flex items-center justify-center">
+      <div className="relative w-full pt-20 px-4 flex items-center justify-center" style={{ minHeight: '60vh' }}>
         {gameState.players.map((player, index) => {
           const position = playerPositions[index] || playerPositions[0];
           const isCurrentTurn = gameState.currentPlayerTurn === player.id;
@@ -66,7 +61,7 @@ export function TeenPattiTable({ gameState, currentUserId, onAction }: TeenPatti
             >
               <div
                 className={cn(
-                  'flex flex-col items-center gap-3 p-4 rounded-2xl glass transition-all duration-300',
+                  'flex flex-col items-center gap-3 p-6 rounded-2xl glass transition-all duration-300',
                   isCurrentTurn && 'ring-2 ring-accent glow-accent shadow-glow-accent',
                   isYou && 'ring-2 ring-primary'
                 )}
@@ -78,7 +73,7 @@ export function TeenPattiTable({ gameState, currentUserId, onAction }: TeenPatti
                   {/* Status indicator */}
                   <motion.div
                     className={cn(
-                      'absolute bottom-0 right-0 h-3 w-3 rounded-full',
+                      'absolute bottom-0 right-0 h-4 w-4 rounded-full',
                       player.status === 'playing' && 'bg-green-500 shadow-glow-success',
                       player.status === 'folded' && 'bg-red-500/50',
                       player.status === 'idle' && 'bg-muted'
@@ -131,7 +126,7 @@ export function TeenPattiTable({ gameState, currentUserId, onAction }: TeenPatti
 
         {/* Center Pot */}
         <motion.div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-3 z-10"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-4 z-10"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: 'spring', stiffness: 200, damping: 20 }}
@@ -141,13 +136,13 @@ export function TeenPattiTable({ gameState, currentUserId, onAction }: TeenPatti
             <div className="absolute inset-0 rounded-full bg-gradient-to-br from-accent to-primary blur-2xl opacity-50" />
 
             {/* Pot card */}
-            <div className="relative bg-gradient-to-br from-primary/80 to-accent/80 rounded-2xl p-8 border border-accent/50 glass-strong shadow-2xl">
-              <div className="flex flex-col items-center gap-2">
+            <div className="relative bg-gradient-to-br from-primary/80 to-accent/80 rounded-2xl p-8 border-2 border-accent/50 glass-strong shadow-2xl">
+              <div className="flex flex-col items-center gap-3">
                 <p className="text-xs font-mono uppercase tracking-widest text-accent opacity-80">
                   Pot
                 </p>
-                <p className="text-4xl font-bold text-foreground">₹{gameState.pot.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">Min bet: ₹{gameState.minimumBet}</p>
+                <p className="text-5xl font-bold text-foreground">₹{gameState.pot.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Min bet: ₹{gameState.minimumBet}</p>
               </div>
             </div>
           </div>
@@ -162,7 +157,7 @@ export function TeenPattiTable({ gameState, currentUserId, onAction }: TeenPatti
               {gameState.communityCards.map((card, idx) => (
                 <motion.div
                   key={idx}
-                  className="w-16 h-24 rounded-lg bg-gradient-to-br from-accent to-primary border-2 border-accent/50 flex items-center justify-center font-bold text-foreground shadow-lg"
+                  className="w-20 h-28 rounded-lg bg-gradient-to-br from-accent to-primary border-2 border-accent/50 flex items-center justify-center font-bold text-lg text-foreground shadow-lg"
                   whileHover={{ scale: 1.05, rotateY: -10 }}
                   initial={{ rotateY: 90, opacity: 0 }}
                   animate={{ rotateY: 0, opacity: 1 }}
@@ -176,24 +171,24 @@ export function TeenPattiTable({ gameState, currentUserId, onAction }: TeenPatti
         </motion.div>
       </div>
 
-      {/* Player Hand (Bottom) */}
+      {/* Player Hand (Bottom) - Fixed */}
       <motion.div
-        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full px-4 py-6 bg-gradient-to-t from-background via-background/80 to-transparent border-t border-primary/20"
-        initial={{ y: 100, opacity: 0 }}
+        className="fixed bottom-0 left-0 right-0 w-full px-4 py-8 bg-gradient-to-t from-background via-background/95 to-background/80 border-t-2 border-primary/30 shadow-2xl"
+        initial={{ y: 200, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
       >
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           {/* Your cards */}
-          <div className="flex justify-center gap-4 mb-6">
+          <div className="flex justify-center gap-6 mb-8">
             <AnimatePresence>
               {gameState.yourCards.map((card, idx) => (
                 <motion.div
                   key={idx}
                   initial={{ y: 50, opacity: 0, rotateZ: 20 }}
-                  animate={{ y: 0, opacity: 1, rotateZ: idx === 0 ? -8 : idx === 2 ? 8 : 0 }}
+                  animate={{ y: 0, opacity: 1, rotateZ: idx === 0 ? -12 : idx === 2 ? 12 : 0 }}
                   exit={{ y: 50, opacity: 0 }}
-                  whileHover={{ y: -10, scale: 1.05 }}
-                  className="w-20 h-32 rounded-xl bg-gradient-to-br from-primary/90 to-accent/90 border-2 border-accent/50 flex items-center justify-center font-bold text-xl text-foreground cursor-pointer shadow-lg hover:shadow-glow-primary transition-shadow"
+                  whileHover={{ y: -15, scale: 1.1 }}
+                  className="w-28 h-40 rounded-xl bg-gradient-to-br from-primary/95 to-accent/95 border-2 border-accent/60 flex items-center justify-center font-bold text-2xl text-foreground cursor-pointer shadow-xl hover:shadow-glow-primary transition-all"
                 >
                   {card}
                 </motion.div>
@@ -204,7 +199,7 @@ export function TeenPattiTable({ gameState, currentUserId, onAction }: TeenPatti
           {/* Game Controls */}
           {isCurrentPlayerTurn && (
             <motion.div
-              className="flex justify-center gap-3 flex-wrap"
+              className="flex justify-center gap-4 flex-wrap"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
@@ -245,7 +240,7 @@ export function TeenPattiTable({ gameState, currentUserId, onAction }: TeenPatti
 
           {!isCurrentPlayerTurn && (
             <div className="text-center text-sm text-muted-foreground">
-              Waiting for {gameState.players.find((p) => p.id === gameState.currentPlayerTurn)?.username || 'player'}...
+              ⏳ Waiting for {gameState.players.find((p) => p.id === gameState.currentPlayerTurn)?.username || 'player'}...
             </div>
           )}
         </div>
@@ -262,17 +257,17 @@ export function TeenPattiTable({ gameState, currentUserId, onAction }: TeenPatti
             onClick={() => setShowRaiseModal(false)}
           >
             <motion.div
-              className="glass rounded-2xl p-6 max-w-sm mx-auto"
+              className="glass rounded-2xl p-8 max-w-sm mx-auto"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-bold mb-4">Raise Bet</h3>
+              <h3 className="text-lg font-bold mb-6">Raise Bet</h3>
 
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">
+                  <label className="text-sm font-medium mb-3 block">
                     Amount: ₹{selectedRaiseAmount}
                   </label>
                   <input

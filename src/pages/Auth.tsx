@@ -1,51 +1,71 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Gamepad2, Mail, Lock, User } from "lucide-react";
+import { Gamepad2, Mail, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { NeonButton } from "@/components/NeonButton";
 import { GlassPanel } from "@/components/GlassPanel";
 import { toast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
 
 export default function Auth() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [username, setUsername] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  console.log('🔐 Auth page loaded - user:', user?.id);
 
   if (!loading && user) return <Navigate to="/" replace />;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
     setSubmitting(true);
+    console.log('📤 Signing in/up with email:', email);
+    
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/`,
-            data: { username: username || email.split("@")[0] },
-          },
-        });
-        if (error) throw error;
-        toast({ title: "Welcome to Gamehub", description: "Account created. You're in." });
-        navigate("/");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        toast({ title: "Signed in", description: "Game on." });
-        navigate("/");
+      if (!email || !password) {
+        throw new Error("Email and password required");
       }
+
+      // Try to sign in first
+      console.log('🔓 Attempting sign in...');
+      const { error: signInError, data: signInData } = await supabase.auth.signInWithPassword({ 
+        email, 
+        password 
+      });
+
+      if (signInError) {
+        // If sign in fails, try to sign up with simple password
+        if (signInError.message.includes("Invalid login credentials")) {
+          console.log('➕ User not found, creating account...');
+          const { error: signUpError } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              emailRedirectTo: `${window.location.origin}/`,
+              data: { username: email.split("@")[0] },
+            },
+          });
+          if (signUpError) throw signUpError;
+        } else {
+          throw signInError;
+        }
+      }
+
+      console.log('✅ Authentication successful');
+      toast({ title: "Welcome!", description: "Let's play!" });
+      navigate("/");
     } catch (err: any) {
+      console.error('❌ Auth error:', err);
+      const errorMsg = err.message ?? "Authentication failed";
+      setError(errorMsg);
       toast({
-        title: "Authentication failed",
-        description: err.message ?? "Check your details and try again.",
+        title: "Error",
+        description: errorMsg,
         variant: "destructive",
       });
     } finally {
@@ -77,43 +97,12 @@ export default function Auth() {
               GAME<span className="gradient-text">HUB</span>
             </span>
           </div>
-          <h1 className="font-display text-3xl font-extrabold">
-            {mode === "signup" ? "Create your account" : "Welcome back"}
-          </h1>
-          <p className="text-sm text-muted-foreground mt-2">
-            {mode === "signup" ? "Drop into the arena in seconds." : "Sign in to keep climbing the ranks."}
-          </p>
+          <h1 className="font-display text-3xl font-extrabold">Let's play</h1>
+          <p className="text-sm text-muted-foreground mt-2">Sign in or create account to start playing</p>
         </div>
 
         <GlassPanel strong className="p-6 sm:p-8">
-          {/* Tabs */}
-          <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-white/5 mb-6">
-            {(["signin", "signup"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setMode(m)}
-                className={cn(
-                  "py-2 rounded-lg text-sm font-mono font-semibold uppercase tracking-wider transition-all",
-                  mode === m
-                    ? "bg-gradient-brand text-primary-foreground shadow-soft"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {m === "signin" ? "Sign in" : "Sign up"}
-              </button>
-            ))}
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === "signup" && (
-              <Field
-                icon={<User className="h-4 w-4" />}
-                placeholder="Username"
-                value={username}
-                onChange={(v) => setUsername(v)}
-              />
-            )}
             <Field
               icon={<Mail className="h-4 w-4" />}
               placeholder="Email"
@@ -124,15 +113,15 @@ export default function Auth() {
             />
             <Field
               icon={<Lock className="h-4 w-4" />}
-              placeholder="Password"
+              placeholder="Password (any password works)"
               type="password"
               required
               value={password}
               onChange={setPassword}
-              minLength={6}
             />
+            {error && <p className="text-sm text-red-400">{error}</p>}
             <NeonButton type="submit" size="lg" className="w-full" disabled={submitting}>
-              {submitting ? "…" : mode === "signup" ? "Create account" : "Sign in"}
+              {submitting ? "…" : "Enter"}
             </NeonButton>
           </form>
         </GlassPanel>
@@ -152,7 +141,6 @@ function Field({
   placeholder: string;
   type?: string;
   required?: boolean;
-  minLength?: number;
   value: string;
   onChange: (v: string) => void;
 }) {
@@ -165,7 +153,6 @@ function Field({
         <input
           type={props.type ?? "text"}
           required={props.required}
-          minLength={props.minLength}
           value={props.value}
           onChange={(e) => props.onChange(e.target.value)}
           placeholder={props.placeholder}

@@ -27,14 +27,21 @@ export default function Lobby() {
 
   // Handle quick offline play
   async function handlePlayOffline() {
-    if (!user || !game) return;
+    if (!user) {
+      toast({ title: "Authentication required", description: "Please sign in to play offline.", variant: "destructive" });
+      navigate('/auth');
+      return;
+    }
+    if (!game) {
+      toast({ title: "Game not found", variant: "destructive" });
+      return;
+    }
     setBusy(true);
     try {
       // For offline mode, navigate directly to the game with a special offline code
       navigate(`/play/${game.id}/offline`);
     } catch (e: any) {
       toast({ title: "Failed to start offline game", description: e.message, variant: "destructive" });
-    } finally {
       setBusy(false);
     }
   }
