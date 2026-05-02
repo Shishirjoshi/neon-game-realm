@@ -32,6 +32,7 @@ export interface ChessGame {
   moveHistory: ChessMove[];
   capturedPieces: { white: ChessPiece[]; black: ChessPiece[] };
   difficulty: "easy" | "medium" | "hard";
+  promotionPending: { from: { row: number; col: number }; to: { row: number; col: number } } | null;
 }
 
 /* ================= BOARD INITIALIZATION ================= */
@@ -246,6 +247,11 @@ export function getLegalMoves(
 
 /* ================= MOVE EXECUTION ================= */
 
+export function needsPromotion(pawn: ChessPiece, toRow: number): boolean {
+  if (pawn.type !== "pawn") return false;
+  return (pawn.color === "white" && toRow === 0) || (pawn.color === "black" && toRow === 7);
+}
+
 export function makeMove(
   board: (ChessPiece | null)[][],
   from: { row: number; col: number },
@@ -437,6 +443,7 @@ export function useChessGame(difficulty: "easy" | "medium" | "hard" = "medium") 
     moveHistory: [],
     capturedPieces: { white: [], black: [] },
     difficulty,
+    promotionPending: null,
   });
 
   const selectSquare = (row: number, col: number) => {
@@ -450,6 +457,19 @@ export function useChessGame(difficulty: "easy" | "medium" | "hard" = "medium") 
 
     // If move destination
     if (game.validMoves.some((m) => m.row === row && m.col === col)) {
+      const piece = game.board[game.selectedSquare!.row][game.selectedSquare!.col];
+      
+      // Check if pawn promotion is needed
+      if (needsPromotion(piece!, row)) {
+        setGame({
+          ...game,
+          promotionPending: { from: game.selectedSquare!, to: { row, col } },
+          selectedSquare: null,
+          validMoves: [],
+        });
+        return;
+      }
+
       const { board: newBoard, captured } = makeMove(game.board, game.selectedSquare!, { row, col });
       const newStatus = getGameStatus(newBoard, "black");
 
@@ -516,8 +536,30 @@ export function useChessGame(difficulty: "easy" | "medium" | "hard" = "medium") 
       moveHistory: [],
       capturedPieces: { white: [], black: [] },
       difficulty,
+      promotionPending: null,
     });
   };
 
-  return { game, selectSquare, makeBotMove, resetGame };
+  const promotePawn = (piece: PieceType) => {
+    if (!game.promotionPending) return;
+
+    const { from, to } = game.promotionPending;
+    const { board: newBoard, captured } = makeMove(game.board, from, to, piece);
+    const newStatus = getGameStatus(newBoard, "black");
+
+    setGame({
+      ...game,
+      board: newBoard,
+      currentTurn: "black",
+      promotionPending: null,
+      gameStatus: newStatus,
+      moveHistory: [...game.moveHistory, { from, to, promotion: piece }],
+      capturedPieces: {
+        ...game.capturedPieces,
+        white: captured ? [...game.capturedPieces.white, captured] : game.capturedPieces.white,
+      },
+    });
+  };
+
+  return { game, selectSquare, makeBotMove, resetGame, promotePawn };
 }
