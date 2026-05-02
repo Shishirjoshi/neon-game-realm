@@ -200,6 +200,33 @@ function getKingMoves(
     }
   }
 
+  // Castling moves
+  const king = board[row][col];
+  if (king?.hasMoved === false) {
+    // King side castling
+    const kingRook = board[row][7];
+    if (
+      kingRook?.type === "rook" &&
+      kingRook?.hasMoved === false &&
+      board[row][5] === null &&
+      board[row][6] === null
+    ) {
+      moves.push([row, 6]);
+    }
+
+    // Queen side castling
+    const queenRook = board[row][0];
+    if (
+      queenRook?.type === "rook" &&
+      queenRook?.hasMoved === false &&
+      board[row][1] === null &&
+      board[row][2] === null &&
+      board[row][3] === null
+    ) {
+      moves.push([row, 2]);
+    }
+  }
+
   return moves;
 }
 
@@ -271,6 +298,22 @@ export function makeMove(
 
   if (piece.type === "pawn" && (to.row === 0 || to.row === 7) && promotion) {
     newBoard[to.row][to.col]!.type = promotion;
+  }
+
+  // Handle castling
+  if (piece.type === "king" && Math.abs(to.col - from.col) === 2) {
+    // King side castling
+    if (to.col > from.col) {
+      const rook = newBoard[from.row][7];
+      newBoard[from.row][5] = { ...rook!, hasMoved: true };
+      newBoard[from.row][7] = null;
+    }
+    // Queen side castling
+    else {
+      const rook = newBoard[from.row][0];
+      newBoard[from.row][3] = { ...rook!, hasMoved: true };
+      newBoard[from.row][0] = null;
+    }
   }
 
   newBoard[from.row][from.col] = null;
