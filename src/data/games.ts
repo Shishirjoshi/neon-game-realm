@@ -22,7 +22,7 @@ export const GAMES: Game[] = [
     category: "Strategy",
     players: 1175,
     thumbnail: chess,
-    description: "Classic chess on a holographic board. Online ranked.",
-    href: "/lobby/glass-chess",
+    description: "Classic chess on a holographic board. Play against AI offline!",
+    href: "/play/chess-offline",
   },
 ];

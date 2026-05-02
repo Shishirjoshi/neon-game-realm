@@ -11,6 +11,7 @@ import Auth from "./pages/Auth.tsx";
 import Lobby from "./pages/Lobby.tsx";
 import Room from "./pages/Room.tsx";
 import TeenPattiGame from "./pages/TeenPattiGame.tsx";
+import ChessOffline from "./pages/ChessOffline.tsx";
 import GamePlaceholder from "./pages/GamePlaceholder.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -32,6 +33,7 @@ const App = () => {
                   <Route path="/lobby/:gameId" element={<Lobby />} />
                   <Route path="/room/:code" element={<Room />} />
                   <Route path="/play/teen-patti/:code" element={<TeenPattiGame />} />
+                  <Route path="/play/chess-offline" element={<ChessOffline />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
