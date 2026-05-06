@@ -304,8 +304,8 @@ export function TeenPattiTable({
             <button
               className="btn-next"
               onClick={() => {
-                // This will be handled by parent component
-                window.location.reload();
+                const winner = gameState.players.find(p => p.status === 'won');
+                if (onGameEnd && winner) onGameEnd(winner);
               }}
             >
               Next Round →
