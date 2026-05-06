@@ -197,3 +197,5 @@ MIT
 
 **Made with ❤️ using React + Socket.IO + Tailwind CSS**
 
+Note: minor documentation update — 2026-05-06.
+
